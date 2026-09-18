@@ -93,7 +93,12 @@ jobs:
       # 构建本身不会发现"链接拼错了"这类问题——只有点下去才知道。
       # 与其等线上 404，不如在这里拦下来。
       - run: npm run check:links
+      # enablement: 仓库第一次部署时，Pages 站点还不存在，这个开关让 action 顺手把它建出来。
+      # 不加的话，新仓库的首轮运行必定失败在 configure-pages，而报错只说
+      # "Get Pages site failed"，不会告诉你要去 Settings 里把 Source 改成 GitHub Actions。
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
