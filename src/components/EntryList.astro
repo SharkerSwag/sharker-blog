@@ -1,0 +1,73 @@
+---
+import { base } from '../lib/site';
+import { autoSummary, fmtDate } from '../lib/entries';
+
+interface Item {
+  id: string;
+  date: Date;
+  lang: string;
+  title: string;
+  summary?: string;
+  pinned?: boolean;
+  /** 混合来源时（标签页、归档页）每条自带板块；不传就统一用下面的 collection。 */
+  collection?: string;
+  /** 没有标题时用作显示文案的正文，用来生成自动摘要。 */
+  body?: string;
+  tags?: string[];
+}
+
+interface Props {
+  items: Item[];
+  collection: string;
+  /** 列表为空时的提示语。 */
+  empty?: string;
+}
+
+const { items, collection, empty = '这里还空着。' } = Astro.props;
+
+const rows = items.map((item) => ({
+  ...item,
+  href: `${base}${item.collection ?? collection}/${item.id}/`,
+  blurb: autoSummary({ data: { summary: item.summary }, body: item.body }),
+}));
+---
+
+<ul class="entry-list">
+  {
+    rows.map((row) => (
+      <li class:list={[row.pinned && 'is-pinned']}>
+        <a href={row.href}>
+          {row.pinned && <span class="pin-badge">置顶</span>}
+          <span class="entry-meta">{fmtDate(row.date)}</span>
+          {row.lang === 'en' && <span class="lang">EN</span>}
+          {row.title}
+        </a>
+        {row.blurb && <p class="entry-summary">{row.blurb}</p>}
+      </li>
+    ))
+  }
+</ul>
+
+{rows.length === 0 && <p class="empty">{empty}</p>}
+
+<style>
+  .pin-badge {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 2px 6px;
+    border: 1px solid #d8cfa8;
+    border-radius: 3px;
+    background: #faf4dd;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    color: #8a7f4d;
+    vertical-align: 2px;
+  }
+
+  .empty {
+    margin: 0;
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+</style>

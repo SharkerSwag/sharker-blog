@@ -1,0 +1,763 @@
+---
+import { base } from '../lib/site';
+interface Props {
+  title?: string;
+  description?: string;
+  section?: string;
+  ogType?: string;
+}
+
+const {
+  title = 'Clio',
+  description = '随笔、布告牌、论文阅读、面经与八股。',
+  section = 'HOME',
+  ogType = 'website',
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://sharkerswag.github.io').href;
+
+const nav = [
+  ['notes', '随笔'],
+  ['bulletin', '布告牌'],
+  ['papers', '论文'],
+  ['interview', '面经'],
+];
+
+// 索引类页面单独一组：它们回答的是"怎么找"而不是"写在哪"，
+// 混进上面那排会把两种不同性质的东西摆在同一层级。
+const tools = [
+  ['search', '搜索'],
+  ['tags', '标签'],
+  ['archive', '归档'],
+];
+
+const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0] ?? '';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="color-scheme" content="light" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    <link rel="alternate" type="application/rss+xml" title="Clio" href={`${base}rss.xml`} />
+  </head>
+  <body>
+    <div class="desk">
+      <div class="shell">
+        <div class="screen">
+          <div class="screen-bar">
+            <span class="screen-app">
+              <svg class="app-icon" viewBox="0 0 32 32" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M5 3h22v3h3v23H2V6h3zm3 3v9h16V6zm0 15v5h16v-5z"></path>
+              </svg>
+              CLIO / {section}
+            </span>
+            <span class="screen-meta">NOTES · SINCE 2026</span>
+          </div>
+
+          <div class="screen-body">
+            <header class="site-head">
+              <a class="brand" href={base}>
+                <span class="brand-mark">Clio</span>
+                <span class="brand-sub">记录 / notes</span>
+              </a>
+
+              <div class="head-right">
+                <nav class="site-nav" aria-label="板块">
+                  {
+                    nav.map(([slug, label]) => (
+                      <a href={`${base}${slug}/`} class:list={[here === slug && 'is-active']}>
+                        {label}
+                      </a>
+                    ))
+                  }
+                </nav>
+
+                <nav class="site-tools" aria-label="索引">
+                  {
+                    tools.map(([slug, label]) => (
+                      <a href={`${base}${slug}/`} class:list={[here === slug && 'is-active']}>
+                        {label}
+                      </a>
+                    ))
+                  }
+                </nav>
+
+                <details class="menu">
+                  <summary aria-label="目录">
+                    <span class="bars" aria-hidden="true" />
+                  </summary>
+                  <nav class="menu-panel" aria-label="板块">
+                    {nav.map(([slug, label]) => <a href={`${base}${slug}/`}>{label}</a>)}
+                    <div class="menu-group">
+                      {tools.map(([slug, label]) => <a href={`${base}${slug}/`}>{label}</a>)}
+                    </div>
+                    <a class="menu-sub" href={`${base}rss.xml`}>RSS 订阅</a>
+                  </nav>
+                </details>
+              </div>
+            </header>
+
+            <main class="site-main">
+              <slot />
+            </main>
+
+            <footer class="site-foot">
+              <p class="creed">Clio —— 名字取自希腊神话中掌管历史与记录的缪斯。</p>
+              <p class="foot-links">
+                <a href={`${base}archive/`}>归档</a>
+                <a href={`${base}tags/`}>标签</a>
+                <a href={`${base}search/`}>搜索</a>
+                <a href={`${base}rss.xml`}>RSS</a>
+              </p>
+            </footer>
+          </div>
+
+          <div class="screen-status">
+            <span class="led"></span>
+            <span>{section}</span>
+          </div>
+        </div>
+
+        <div class="shell-bottom">
+          <span class="shell-led"></span>
+          <span class="shell-slot"></span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --page: #f5f6f7;
+    --shell: #e4dfd1;
+    --shell-edge: #d0cabc;
+    --shell-shadow: #d5d0c3;
+    --bezel: #b8b6a7;
+    --screen: #243c3b;
+    --screen-ink: #c9dfcf;
+    --screen-dim: #87a79b;
+    --paper: #faf9f4;
+    --ink: #26303a;
+    --ink-soft: #5c666e;
+    --ink-faint: #9298a1;
+    --rule: #e5e3d9;
+    --accent: #3464c9;
+    --sticky: #f6ecc9;
+    --mono: Consolas, "SF Mono", ui-monospace, "Cascadia Mono", monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 48px 20px 76px;
+    background: var(--page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", sans-serif;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- 机身 ---------- */
+
+  .desk {
+    max-width: 740px;
+    margin: 0 auto;
+  }
+
+  .shell {
+    background: var(--shell);
+    border: 1px solid var(--shell-edge);
+    border-radius: 17px 17px 10px 10px;
+    padding: 22px 22px 0;
+    box-shadow: 8px 10px 0 var(--shell-shadow), 0 28px 60px #59646b14;
+    animation: window-open 0.34s ease-out both;
+  }
+
+  @keyframes window-open {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.99);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shell {
+      animation: none;
+    }
+  }
+
+  /* ---------- 屏幕 ---------- */
+
+  .screen {
+    background: var(--screen);
+    border: 9px solid var(--bezel);
+    border-radius: 10px;
+    box-shadow: inset 0 0 25px #112725;
+    overflow: hidden;
+  }
+
+  .screen-bar,
+  .screen-status {
+    display: flex;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    color: var(--screen-ink);
+  }
+
+  .screen-bar {
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 14px;
+    border-bottom: 1px solid #2f4a49;
+  }
+
+  .screen-app {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-icon {
+    width: 12px;
+    height: 12px;
+    display: block;
+    flex: none;
+  }
+
+  .screen-meta {
+    color: var(--screen-dim);
+    white-space: nowrap;
+  }
+
+  .screen-status {
+    gap: 8px;
+    padding: 8px 14px;
+    color: var(--screen-dim);
+  }
+
+  .led {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #7b9c85;
+  }
+
+  .screen-body {
+    background: var(--paper);
+    padding: 30px 30px 38px;
+  }
+
+  /* ---------- 机身底部 ---------- */
+
+  .shell-bottom {
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+  }
+
+  .shell-led {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #7b9c85;
+  }
+
+  .shell-slot {
+    height: 4px;
+    width: 67px;
+    border-radius: 2px;
+    background: #88897f;
+  }
+
+  /* ---------- 站头 ---------- */
+
+  .site-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--ink);
+  }
+
+  .brand:hover {
+    text-decoration: none;
+  }
+
+  .brand-mark {
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  .brand-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+  }
+
+  .head-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .site-nav {
+    display: flex;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .site-nav a {
+    color: var(--ink-soft);
+  }
+
+  .site-nav a:hover {
+    color: var(--accent);
+  }
+
+  /* 索引入口：比板块链接低一档的视觉权重，但始终可见 */
+  .site-tools {
+    display: flex;
+    gap: 11px;
+    padding-left: 15px;
+    border-left: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+
+  .site-tools a {
+    color: var(--ink-faint);
+  }
+
+  .site-tools a:hover {
+    color: var(--accent);
+  }
+
+  .site-nav a.is-active,
+  .site-tools a.is-active {
+    color: var(--ink);
+  }
+
+  .site-nav a.is-active {
+    font-weight: 600;
+  }
+
+  /* ---------- 窄屏目录（三条杠） ---------- */
+
+  .menu {
+    display: none;
+    position: relative;
+  }
+
+  .menu summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 26px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #fbfaf5;
+    color: var(--ink-soft);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .menu summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .bars {
+    position: relative;
+    display: block;
+    width: 14px;
+    height: 1.5px;
+    background: currentColor;
+  }
+
+  .bars::before,
+  .bars::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 14px;
+    height: 1.5px;
+    background: currentColor;
+  }
+
+  .bars::before {
+    top: -4.5px;
+  }
+
+  .bars::after {
+    top: 4.5px;
+  }
+
+  .menu[open] summary {
+    border-color: #c9c5b6;
+    color: var(--accent);
+  }
+
+  .menu-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    min-width: 132px;
+    padding: 5px;
+    border: 1px solid #c9c5b6;
+    background: #fbfaf5;
+    box-shadow: 3px 4px 0 #00000026;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .menu-panel a {
+    padding: 6px 10px;
+    color: var(--ink-soft);
+  }
+
+  .menu-panel a:hover {
+    background: var(--shell);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .menu-panel .menu-sub {
+    margin-top: 4px;
+    border-top: 1px solid var(--rule);
+    padding-top: 8px;
+    color: var(--ink-faint);
+    font-size: 11px;
+  }
+
+  .menu-panel .menu-group {
+    display: flex;
+    flex-direction: column;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .site-main {
+    padding: 32px 0 8px;
+  }
+
+  .site-foot {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  .site-foot p {
+    margin: 0;
+  }
+
+  .foot-links {
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+
+  .creed {
+    max-width: 40ch;
+  }
+
+  /* ---------- 通用元素 ---------- */
+
+  h1 {
+    font-size: 23px;
+    font-weight: 500;
+    line-height: 1.45;
+    margin: 0 0 6px;
+  }
+
+  .section {
+    margin-bottom: 44px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 7px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .section-head h2 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    color: var(--ink-soft);
+  }
+
+  .section-head a,
+  .section-head .count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .entry-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .entry-list li {
+    padding: 11px 0;
+    border-bottom: 1px solid #f0eee5;
+  }
+
+  .entry-list li:last-child {
+    border-bottom: 0;
+  }
+
+  .entry-list a {
+    color: var(--ink);
+  }
+
+  .entry-list a:hover {
+    color: var(--accent);
+  }
+
+  .entry-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-right: 10px;
+  }
+
+  .entry-summary {
+    margin: 3px 0 0;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+
+  .lang {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    line-height: 1;
+    padding: 3px 5px;
+    margin-right: 6px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    color: var(--ink-faint);
+    vertical-align: 1px;
+    letter-spacing: 0.08em;
+  }
+
+  .back {
+    display: inline-block;
+    margin-bottom: 22px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- 正文 ---------- */
+
+  .prose {
+    font-size: 15.5px;
+  }
+
+  .prose h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 30px 0 8px;
+  }
+
+  .prose h3 {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 24px 0 6px;
+  }
+
+  .prose p {
+    margin: 0 0 16px;
+  }
+
+  .prose ul,
+  .prose ol {
+    padding-left: 22px;
+  }
+
+  .prose li {
+    margin-bottom: 5px;
+  }
+
+  .prose code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: #efece1;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  .prose pre {
+    background: #efece1;
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+  }
+
+  .prose pre code {
+    background: none;
+    padding: 0;
+  }
+
+  .prose blockquote {
+    margin: 0 0 16px;
+    padding-left: 14px;
+    border-left: 2px solid var(--rule);
+    color: var(--ink-soft);
+  }
+
+  .prose img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+  }
+
+  .prose hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 30px 0;
+  }
+
+  .prose table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-bottom: 18px;
+  }
+
+  .prose th,
+  .prose td {
+    padding: 7px 10px;
+    border: 1px solid var(--rule);
+    text-align: left;
+  }
+
+  .prose th {
+    background: #f2f0e7;
+    font-weight: 500;
+  }
+
+  /* ---------- 窄屏 ---------- */
+
+  @media (max-width: 640px) {
+    body {
+      padding: 16px 10px 44px;
+    }
+
+    .shell {
+      padding: 13px 13px 0;
+      border-radius: 12px 12px 8px 8px;
+      box-shadow: 5px 6px 0 var(--shell-shadow);
+    }
+
+    .screen {
+      border-width: 6px;
+    }
+
+    .screen-body {
+      padding: 22px 17px 28px;
+    }
+
+    .screen-bar,
+    .screen-status {
+      font-size: 9.5px;
+      letter-spacing: 0.09em;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .screen-meta {
+      display: none;
+    }
+
+    .shell-bottom {
+      height: 34px;
+    }
+
+    h1 {
+      font-size: 20px;
+    }
+
+    .site-nav,
+    .site-tools {
+      display: none;
+    }
+
+    .menu {
+      display: block;
+    }
+  }
+</style>

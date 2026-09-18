@@ -1,0 +1,2 @@
+# 关掉空白 issue：发文只有上面那张表单一条路，免得出现解析不了的 issue。
+blank_issues_enabled: false

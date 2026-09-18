@@ -1,0 +1,15 @@
+# 统一换行符为 LF。
+# 内容文件是在 Windows 上写的，默认会带 CRLF，之后在任何别的机器上编辑
+# 都会让整篇文件变成一行行 diff，真正的改动反而看不见。
+* text=auto eol=lf
+
+# 二进制文件不要做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

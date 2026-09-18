@@ -1,0 +1,297 @@
+---
+import { base } from '../../lib/site';
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { COLLECTION_LABELS, COLLECTION_NAMES } from '../../lib/collections';
+import { fmtDate, isVisible, readingTime, sortByDateDesc } from '../../lib/entries';
+import { tagSlug } from '../../lib/taxonomy';
+
+
+export async function getStaticPaths() {
+  const paths: any[] = [];
+
+  for (const collection of COLLECTION_NAMES) {
+    const entries = await getCollection(collection, ({ data }) => isVisible(data));
+    // 相邻篇目按时间顺序算，不受置顶影响——读者关心的是"这篇前后写了什么"。
+    const chronological = sortByDateDesc(entries as any);
+
+    chronological.forEach((entry: any, i: number) => {
+      paths.push({
+        params: { collection, slug: entry.id },
+        props: {
+          collection,
+          entry,
+          newer: chronological[i + 1] ?? null,
+          older: chronological[i - 1] ?? null,
+        },
+      });
+    });
+  }
+
+  return paths;
+}
+
+const { collection, entry, newer, older } = Astro.props;
+const data = entry.data as any;
+const { Content, headings } = await render(entry);
+const label = COLLECTION_LABELS[collection] ?? '记录';
+
+const toc = headings.filter((h: any) => h.depth === 2 || h.depth === 3);
+const minutes = readingTime(entry.body ?? '');
+
+const neighbour = (item: any) =>
+  item
+    ? {
+        href: `${base}${collection}/${item.id}/`,
+        title: item.data.title ?? `（${fmtDate(item.data.pubDate)} 的便签）`,
+      }
+    : null;
+---
+
+<Base
+  title={data.title ? `${data.title} · Clio` : `${label} · Clio`}
+  description={data.summary ?? ''}
+  section={collection.toUpperCase()}
+  ogType="article"
+>
+  <a class="back" href={`${base}${collection}/`}>← 回到{label}</a>
+
+  {data.title ? <h1>{data.title}</h1> : null}
+
+  <p class="meta">
+    <time datetime={fmtDate(data.pubDate)}>{fmtDate(data.pubDate)}</time>
+    {data.updated && <span class="mod">改于 {fmtDate(data.updated)}</span>}
+    {data.lang === 'en' && <span class="lang">EN</span>}
+    {data.title && <span class="mod">约 {minutes} 分钟</span>}
+  </p>
+
+  {data.venue || data.year ? (
+    <p class="venue">
+      {data.venue}
+      {data.venue && data.year ? ' · ' : ''}
+      {data.year}
+    </p>
+  ) : null}
+
+  {data.link ? (
+    <p class="source">
+      <a href={data.link} target="_blank" rel="noopener">原文链接 ↗</a>
+    </p>
+  ) : null}
+
+  {data.tags?.length ? (
+    <p class="tags">{data.tags.map((tag: string) => <span class="tag">{tag}</span>)}</p>
+  ) : null}
+
+  {
+    toc.length >= 3 && (
+      <details class="toc" open>
+        <summary>本文目录</summary>
+        <ol>
+          {toc.map((h: any) => (
+            <li class={`d${h.depth}`}>
+              <a href={`#${h.slug}`}>{h.text}</a>
+            </li>
+          ))}
+        </ol>
+      </details>
+    )
+  }
+
+  <article class="prose">
+    <Content />
+  </article>
+
+  {
+    (newer || older) && (
+      <nav class="neighbours" aria-label="相邻文章">
+        {older ? (
+          <a class="nb" href={older.href}>
+            <span class="nb-dir">← 更早</span>
+            <span class="nb-title">{older.title}</span>
+          </a>
+        ) : (
+          <span class="nb nb-empty" />
+        )}
+        {newer ? (
+          <a class="nb nb-next" href={newer.href}>
+            <span class="nb-dir">更新 →</span>
+            <span class="nb-title">{newer.title}</span>
+          </a>
+        ) : (
+          <span class="nb nb-empty" />
+        )}
+      </nav>
+    )
+  }
+
+  <p class="to-top"><a href="#">↑ 回到顶部</a></p>
+</Base>
+
+<style>
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 6px 0 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .mod {
+    color: var(--ink-faint);
+  }
+
+  .venue {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: 12px 0 0;
+  }
+
+  .source {
+    font-size: 14px;
+    margin: 8px 0 0;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0 0;
+  }
+
+  .tag {
+    padding: 2px 8px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #f4f2ea;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+
+  .tag:hover {
+    border-color: #c9c5b6;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* ---------- 本文目录 ---------- */
+
+  .toc {
+    margin: 26px 0 0;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #f7f5ee;
+    padding: 10px 14px;
+  }
+
+  .toc summary {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  .toc ol {
+    margin: 10px 0 2px;
+    padding-left: 20px;
+    font-size: 14px;
+  }
+
+  .toc li {
+    margin-bottom: 4px;
+  }
+
+  .toc li.d3 {
+    margin-left: 14px;
+    font-size: 13.5px;
+  }
+
+  .toc a {
+    color: var(--ink-soft);
+  }
+
+  .toc a:hover {
+    color: var(--accent);
+  }
+
+  .prose {
+    margin-top: 30px;
+  }
+
+  /* ---------- 相邻文章 ---------- */
+
+  .neighbours {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 46px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .nb {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 11px 13px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #fbfaf5;
+    color: var(--ink);
+  }
+
+  .nb:hover {
+    border-color: #c9c5b6;
+    text-decoration: none;
+  }
+
+  .nb-empty {
+    border: 1px dashed #eeece4;
+    background: none;
+  }
+
+  .nb-next {
+    text-align: right;
+  }
+
+  .nb-dir {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+  }
+
+  .nb-title {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .to-top {
+    margin: 24px 0 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .to-top a {
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 560px) {
+    .neighbours {
+      grid-template-columns: 1fr;
+    }
+
+    .nb-next {
+      text-align: left;
+    }
+
+    .nb-empty {
+      display: none;
+    }
+  }
+</style>

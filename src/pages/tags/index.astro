@@ -1,0 +1,108 @@
+---
+import { base } from '../../lib/site';
+import Base from '../../layouts/Base.astro';
+import { loadEverything } from '../../lib/entries';
+import { buildTags } from '../../lib/taxonomy';
+
+const entries = await loadEverything();
+const tags = buildTags(entries);
+
+const busiest = tags[0]?.count ?? 1;
+
+/** 字号按使用频次分三档，不连续变化——连续变化在中文里看起来会脏。 */
+const sizeOf = (count: number) => (count >= busiest * 0.66 ? 'lg' : count > 1 ? 'md' : 'sm');
+---
+
+<Base title="标签 · Clio" description="全部标签，按使用频次排列。" section="TAGS">
+  <a class="back" href={base}>← 回首页</a>
+
+  <div class="section-head">
+    <h2>标签</h2>
+    <span class="count">{tags.length} 个 · 覆盖 {entries.length} 条记录</span>
+  </div>
+
+  <p class="blurb">
+    给文章打标签，是为了将来能顺着一根线翻回去。这里按用到的次数排，用得多的在最前面。
+  </p>
+
+  {
+    tags.length === 0 ? (
+      <p class="empty">还没有任何标签。在 Markdown 的 frontmatter 里写 `tags: [关键词]` 即可。</p>
+    ) : (
+      <ul class="cloud">
+        {tags.map((bucket) => (
+          <li>
+            <a class={`tag ${sizeOf(bucket.count)}`} href={`${base}tags/${bucket.slug}/`}>
+              {bucket.tag}
+              <span class="n">{bucket.count}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Base>
+
+<style>
+  .blurb {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: -4px 0 24px;
+    max-width: 52ch;
+  }
+
+  .cloud {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 6px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #fbfaf5;
+    color: var(--ink-soft);
+  }
+
+  .tag:hover {
+    border-color: #c9c5b6;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .tag.sm {
+    font-size: 13px;
+  }
+
+  .tag.md {
+    font-size: 14.5px;
+    background: #f6f4ec;
+  }
+
+  .tag.lg {
+    font-size: 16px;
+    padding: 7px 14px;
+    border-color: #ded9c8;
+    background: #f2efe3;
+    color: var(--ink);
+  }
+
+  .n {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+  }
+
+  .empty {
+    margin: 0;
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+</style>

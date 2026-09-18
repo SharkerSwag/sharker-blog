@@ -1,0 +1,35 @@
+---
+import { base } from '../lib/site';
+import Base from '../layouts/Base.astro';
+
+---
+
+<Base title="找不到 · Clio" description="这个地址没有对应的内容。" section="404">
+  <p class="code">404</p>
+  <h1>这个地址没有内容</h1>
+  <p class="hint">可能是链接写错了，或者这篇东西已经不在这里。</p>
+  <p class="links">
+    <a href={base}>← 回首页</a>
+  </p>
+</Base>
+
+<style>
+  .code {
+    font-family: var(--mono);
+    font-size: 34px;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    margin: 0 0 6px;
+  }
+
+  .hint {
+    color: var(--ink-soft);
+    margin: 8px 0 0;
+  }
+
+  .links {
+    margin-top: 22px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+</style>

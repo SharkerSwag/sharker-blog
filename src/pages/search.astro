@@ -1,0 +1,240 @@
+---
+import { base } from '../lib/site';
+import Base from '../layouts/Base.astro';
+import { COLLECTIONS } from '../lib/collections';
+
+const collections = Object.entries(COLLECTIONS) as [string, { label: string }][];
+const indexUrl = `${base}search-index.json`;
+---
+
+<Base title="搜索 · Clio" description="在随笔、布告牌、论文阅读与面经里全文检索。" section="SEARCH">
+  <a class="back" href={base}>← 回首页</a>
+
+  <div class="section-head">
+    <h2>搜索</h2>
+    <span class="count">全文检索</span>
+  </div>
+
+  <div
+    class="finder"
+    id="search-app"
+    data-index={indexUrl}
+    data-base={base}
+  >
+    <div class="find">
+      <label class="find-label" for="q">检索</label>
+      <input
+        id="q"
+        data-search-input
+        type="search"
+        placeholder="中文直接打，多个词用空格分开"
+        autocomplete="off"
+        spellcheck="false"
+        aria-describedby="search-hint"
+      />
+    </div>
+
+    <div class="filters" data-search-filters role="group" aria-label="按板块筛选">
+      <button type="button" data-collection="" class="chip is-on">全部</button>
+      {
+        collections.map(([key, { label }]) => (
+          <button type="button" data-collection={key} class="chip">
+            {label}
+          </button>
+        ))
+      }
+    </div>
+
+    <p class="status" id="search-hint" data-search-status role="status" aria-live="polite">
+      正在准备…
+    </p>
+
+    <ul class="hits" data-search-results></ul>
+  </div>
+</Base>
+
+<script>
+  import { initSearch } from '../scripts/search';
+
+  const root = document.getElementById('search-app');
+  if (root) initSearch(root);
+</script>
+
+<style>
+  .finder {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* System 7 的文本框：白底、深色描边、内侧一道阴影 */
+  .find {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 13px;
+    border: 1px solid #d4cfbe;
+    border-radius: 3px;
+    background: #f4f2e9;
+  }
+
+  .find-label {
+    flex: none;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+  }
+
+  .find input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border: 1px solid #b9b4a3;
+    border-radius: 2px;
+    background: #ffffff;
+    box-shadow: inset 1px 1px 0 #00000014;
+    font: inherit;
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+
+  .find input:focus {
+    outline: 2px solid #b6c6e8;
+    outline-offset: 0;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip {
+    padding: 5px 11px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #fbfaf5;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  .chip:hover {
+    border-color: #c9c5b6;
+    color: var(--accent);
+  }
+
+  .chip.is-on {
+    border-color: #b9b4a3;
+    background: var(--shell);
+    color: var(--ink);
+  }
+
+  .status {
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .hits {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hits :global(.hit) {
+    border-bottom: 1px solid #f0eee5;
+  }
+
+  .hits :global(.hit:last-child) {
+    border-bottom: 0;
+  }
+
+  .hits :global(.hit-link) {
+    display: block;
+    padding: 13px 0;
+    color: var(--ink);
+  }
+
+  .hits :global(.hit-link:hover) {
+    text-decoration: none;
+  }
+
+  .hits :global(.hit-link:hover .hit-title) {
+    color: var(--accent);
+  }
+
+  .hits :global(.hit-head) {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+
+  .hits :global(.hit-date) {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .hits :global(.hit-kind) {
+    padding: 1px 6px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+  }
+
+  .hits :global(.hit-title) {
+    font-size: 15.5px;
+  }
+
+  .hits :global(.hit-snippet) {
+    margin: 5px 0 0;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+  }
+
+  .hits :global(.hit-tags) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 7px 0 0;
+  }
+
+  .hits :global(.hit-tag) {
+    padding: 1px 7px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #f4f2ea;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .hits :global(mark) {
+    padding: 0 1px;
+    background: #f6e6a8;
+    color: inherit;
+  }
+
+  @media (max-width: 520px) {
+    .find {
+      gap: 8px;
+      padding: 9px 10px;
+    }
+
+    .find-label {
+      display: none;
+    }
+  }
+</style>

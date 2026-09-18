@@ -1,0 +1,362 @@
+---
+import { base } from '../lib/site';
+import { render } from 'astro:content';
+import { excerpt, fmtDate } from '../lib/entries';
+
+interface Props {
+  /** 已经过滤好、排好序的布告牌条目。 */
+  entries: any[];
+  /** 最多贴几张，不传就全贴。 */
+  limit?: number;
+}
+
+const { entries, limit } = Astro.props;
+const list = limit ? entries.slice(0, limit) : entries;
+
+const notes = await Promise.all(
+  list.map(async (entry) => ({
+    id: String(entry.id),
+    key: `note-${String(entry.id).replace(/[^a-zA-Z0-9-]/g, '-')}`,
+    date: entry.data.pubDate as Date,
+    pinned: Boolean(entry.data.pinned),
+    text: excerpt(entry.body ?? '', 76),
+    Content: (await render(entry)).Content,
+  })),
+);
+---
+
+<div class="board">
+  <ul class="wall">
+    {
+      notes.map((note) => (
+        <li class:list={['note', note.pinned && 'is-pinned']}>
+          <button
+            type="button"
+            class="note-open"
+            data-note-open={note.key}
+            aria-haspopup="dialog"
+            aria-label={`展开 ${fmtDate(note.date)} 的便签`}
+          >
+            <span class="pin" aria-hidden="true" />
+            <span class="note-date">
+              {fmtDate(note.date)}
+              {note.pinned && <span class="note-flag">永久</span>}
+            </span>
+            <span class="note-text">{note.text}</span>
+          </button>
+        </li>
+      ))
+    }
+  </ul>
+
+  {notes.length === 0 && <p class="board-empty">板上暂时没有便签。</p>}
+</div>
+
+{
+  notes.map((note) => (
+    <dialog class="note-dialog" id={note.key}>
+      <div class="dialog-bar">
+        <button type="button" class="dialog-close" data-close aria-label="关闭" />
+        <span class="dialog-title">{fmtDate(note.date)}</span>
+      </div>
+      <div class="dialog-body prose">
+        <note.Content />
+      </div>
+      <div class="dialog-foot">
+        <a href={`${base}bulletin/${note.id}/`}>固定链接 ↗</a>
+      </div>
+    </dialog>
+  ))
+}
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-note-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.noteOpen;
+      if (!id) return;
+      const dialog = document.getElementById(id);
+      if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
+    });
+  });
+
+  document.querySelectorAll<HTMLDialogElement>('dialog.note-dialog').forEach((dialog) => {
+    // 点击遮罩关闭：此时事件目标正好是 dialog 自身。
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+    dialog.querySelector('[data-close]')?.addEventListener('click', () => dialog.close());
+  });
+</script>
+
+<style>
+  /* ---------- 软木板 ---------- */
+
+  .board {
+    background-color: #c8a97a;
+    background-image:
+      radial-gradient(circle at 20% 30%, #b3945f 1px, transparent 1.3px),
+      radial-gradient(circle at 68% 62%, #d3b98d 1px, transparent 1.3px),
+      radial-gradient(circle at 44% 84%, #b99a68 1px, transparent 1.3px);
+    background-size: 9px 9px, 13px 13px, 17px 17px;
+    border: 9px solid #8a6a44;
+    border-radius: 6px;
+    box-shadow:
+      inset 0 0 22px #6d4f2e33,
+      3px 4px 0 #e0d6bb;
+    padding: 20px 16px 18px;
+  }
+
+  .wall {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
+    gap: 18px 13px;
+  }
+
+  .board-empty {
+    margin: 0;
+    padding: 10px 4px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: #6d4f2e99;
+  }
+
+  /* ---------- 便利贴 ---------- */
+
+  .note {
+    position: relative;
+    background: var(--sticky);
+    border-radius: 2px;
+    box-shadow: 2px 3px 7px #6d4f2e38;
+    transform: rotate(-0.7deg);
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .note:nth-child(even) {
+    transform: rotate(0.8deg);
+  }
+
+  .note:nth-child(3n) {
+    transform: rotate(-0.3deg);
+  }
+
+  .note:nth-child(4n) {
+    background: #e9f0d9;
+  }
+
+  .note:nth-child(5n) {
+    background: #f8e5e0;
+  }
+
+  .note:hover {
+    transform: rotate(0deg) translateY(-2px);
+    box-shadow: 3px 6px 13px #6d4f2e4d;
+    z-index: 2;
+  }
+
+  .note-open {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-height: 118px;
+    padding: 13px 13px 14px;
+    border: 0;
+    border-radius: 2px;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .pin {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    margin-left: -5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #f6bdb3, #bd4a3c 72%);
+    box-shadow: 0 1px 2px #00000052;
+  }
+
+  .note:nth-child(even) .pin {
+    background: radial-gradient(circle at 34% 30%, #b9cfe6, #3d6b9e 72%);
+  }
+
+  .note:nth-child(3n) .pin {
+    background: radial-gradient(circle at 34% 30%, #e8d59b, #b08927 72%);
+  }
+
+  .note-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: #9b9068;
+  }
+
+  .note-flag {
+    padding: 1px 4px;
+    border: 1px solid #c4b98f;
+    border-radius: 2px;
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+    color: #8a8055;
+  }
+
+  .note-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.62;
+    color: #4a4432;
+  }
+
+  /* ---------- 弹出窗口 ---------- */
+
+  .note-dialog {
+    width: min(520px, calc(100vw - 28px));
+    max-height: min(80vh, 660px);
+    margin: auto;
+    padding: 0;
+    border: 1px solid #1c1c1c;
+    border-radius: 0;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow:
+      5px 6px 0 #0000002b,
+      0 30px 65px #26303a4a;
+    overflow: hidden;
+    animation: dialog-in 0.16s ease-out;
+  }
+
+  .note-dialog::backdrop {
+    background: #243c3b80;
+    backdrop-filter: blur(1.5px);
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.985);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .note-dialog {
+      animation: none;
+    }
+  }
+
+  /* System 7 的标题栏：横条纹 + 居中的标题 */
+  .dialog-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 27px;
+    padding: 0 9px;
+    border-bottom: 1px solid #1c1c1c;
+    background: #f0eee6;
+  }
+
+  .dialog-bar::before {
+    content: '';
+    position: absolute;
+    inset: 8px 0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      #2b2b2b 0 1px,
+      transparent 1px 2.6px
+    );
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .dialog-close {
+    position: relative;
+    flex: none;
+    width: 13px;
+    height: 13px;
+    padding: 0;
+    border: 1px solid #1c1c1c;
+    background: #fbfaf5;
+    cursor: pointer;
+  }
+
+  .dialog-close::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    background: #1c1c1c;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  .dialog-close:hover::after,
+  .dialog-close:focus-visible::after {
+    opacity: 0.75;
+  }
+
+  .dialog-title {
+    position: relative;
+    margin: 0 auto;
+    padding: 1px 12px;
+    background: #f0eee6;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+  }
+
+  .dialog-body {
+    max-height: calc(min(80vh, 660px) - 70px);
+    overflow-y: auto;
+    padding: 18px 22px 20px;
+    font-size: 14.5px;
+  }
+
+  .dialog-body :global(p) {
+    margin: 0 0 12px;
+  }
+
+  .dialog-body :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .dialog-foot {
+    padding: 7px 12px;
+    border-top: 1px solid var(--rule);
+    background: #f4f2ea;
+    font-family: var(--mono);
+    font-size: 10.5px;
+  }
+
+  .dialog-foot a {
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 640px) {
+    .wall {
+      grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+      gap: 15px 11px;
+    }
+
+    .note-open {
+      min-height: 104px;
+      padding: 11px 11px 12px;
+    }
+
+    .note-text {
+      font-size: 12.5px;
+      -webkit-line-clamp: 3;
+    }
+  }
+</style>

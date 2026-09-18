@@ -1,0 +1,16 @@
+---
+import Base from '../../layouts/Base.astro';
+import CollectionView from '../../components/CollectionView.astro';
+import { COLLECTIONS, COLLECTION_NAMES, type CollectionName } from '../../lib/collections';
+
+export function getStaticPaths() {
+  return COLLECTION_NAMES.map((collection) => ({ params: { collection } }));
+}
+
+const collection = Astro.params.collection as CollectionName;
+const { label, blurb } = COLLECTIONS[collection];
+---
+
+<Base title={`${label} · Clio`} description={blurb} section={collection.toUpperCase()}>
+  <CollectionView collection={collection} page={1} />
+</Base>

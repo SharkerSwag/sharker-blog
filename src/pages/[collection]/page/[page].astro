@@ -1,0 +1,36 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import CollectionView from '../../../components/CollectionView.astro';
+import { COLLECTIONS, COLLECTION_NAMES, type CollectionName } from '../../../lib/collections';
+import { isVisible, withPinned } from '../../../lib/entries';
+import { SITE } from '../../../lib/config';
+
+// 分页刻意放在 /<板块>/page/N/，而不是 /<板块>/N/。
+// 原因是 [slug].astro 的优先级高于 rest 参数，/notes/2/ 会被当成一篇名为 "2" 的文章而 404。
+export async function getStaticPaths() {
+  const paths: { params: { collection: string; page: string } }[] = [];
+
+  for (const collection of COLLECTION_NAMES) {
+    const entries = await getCollection(collection as any, ({ data }: any) => isVisible(data));
+    const total = Math.ceil(withPinned(entries as any).all.length / SITE.pageSize);
+    for (let page = 2; page <= total; page++) {
+      paths.push({ params: { collection, page: String(page) } });
+    }
+  }
+
+  return paths;
+}
+
+const collection = Astro.params.collection as CollectionName;
+const page = Number(Astro.params.page);
+const { label, blurb } = COLLECTIONS[collection];
+---
+
+<Base
+  title={`${label} · 第 ${page} 页 · Clio`}
+  description={blurb}
+  section={collection.toUpperCase()}
+>
+  <CollectionView collection={collection} page={page} />
+</Base>

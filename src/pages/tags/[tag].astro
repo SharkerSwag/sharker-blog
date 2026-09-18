@@ -1,0 +1,132 @@
+---
+import { base } from '../../lib/site';
+import Base from '../../layouts/Base.astro';
+import EntryList from '../../components/EntryList.astro';
+import { loadEverything } from '../../lib/entries';
+import { buildTags, tagSlug } from '../../lib/taxonomy';
+
+
+/**
+ * 标签页由 buildTags 一次性算好，这里只负责铺开。
+ * 逻辑放在 lib 里而不是本文件的 frontmatter —— getStaticPaths 会被 Astro
+ * 提成独立模块执行，读不到文件内定义的变量。
+ */
+export async function getStaticPaths() {
+  const entries = await loadEverything();
+  const tags = buildTags(entries);
+
+  return tags.map((bucket) => ({
+    params: { tag: bucket.slug },
+    props: { bucket, entries },
+  }));
+}
+
+const { bucket, entries } = Astro.props;
+
+const allTags = buildTags(entries);
+const slugOf = new Map(allTags.map((candidate) => [candidate.tag, candidate.slug]));
+
+// 相邻标签 = 和本标签出现在同一批文章里的其他标签，按共现次数排。
+// 比"随机推荐"有用：它真的反映这些词属于同一片话题。
+const cooccur = new Map<string, number>();
+for (const entry of bucket.items) {
+  for (const raw of entry.data.tags ?? []) {
+    const tag = String(raw).trim();
+    if (!tag || tag === bucket.tag) continue;
+    cooccur.set(tag, (cooccur.get(tag) ?? 0) + 1);
+  }
+}
+
+const related = [...cooccur.entries()]
+  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh'))
+  .slice(0, 8)
+  .map(([tag, count]) => ({ tag, count, slug: slugOf.get(tag) ?? tagSlug(tag) }));
+
+const items = bucket.items.map((entry: any) => ({
+  id: entry.id,
+  collection: entry.type,
+  date: entry.data.pubDate,
+  lang: entry.data.lang,
+  title: entry.data.title ?? '（便签）',
+  summary: entry.data.summary,
+  body: entry.body,
+  pinned: entry.data.pinned,
+}));
+---
+
+<Base title={`${bucket.tag} · Clio`} description={`带「${bucket.tag}」标签的记录。`} section="TAGS">
+  <a class="back" href={`${base}tags/`}>← 全部标签</a>
+
+  <div class="section-head">
+    <h2>标签 · {bucket.tag}</h2>
+    <span class="count">{bucket.count} 条</span>
+  </div>
+
+  <p class="blurb">下面每一条都带着这个标签，按时间从新到旧。</p>
+
+  <EntryList items={items} collection="notes" />
+
+  {
+    related.length > 0 && (
+      <div class="related">
+        <span class="related-label">相邻标签</span>
+        {related.map((candidate) => (
+          <a class="related-tag" href={`${base}tags/${candidate.slug}/`}>
+            {candidate.tag}
+            <span class="n">{candidate.count}</span>
+          </a>
+        ))}
+      </div>
+    )
+  }
+</Base>
+
+<style>
+  .blurb {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: -4px 0 18px;
+  }
+
+  .related {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 34px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .related-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    margin-right: 4px;
+  }
+
+  .related-tag {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #fbfaf5;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  .related-tag:hover {
+    border-color: #c9c5b6;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .n {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+  }
+</style>

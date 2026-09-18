@@ -1,0 +1,110 @@
+name: Deploy Clio
+
+on:
+  push:
+    branches: [main]
+  # 每天重建一次，让布告牌的过期规则真正生效。
+  # 静态站只在构建时计算日期，没有这一步，超过存活期的便利贴会一直挂在墙上。
+  # 16:00 UTC = 北京时间次日 00:00。
+  schedule:
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+  # 在网页上填一张表单就能发文，模板见 .github/ISSUE_TEMPLATE/publish.yml。
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # 把 issue 表单变成一篇 Markdown，提交到 main。
+  #
+  # 发布和构建之所以要在同一次运行里做完：用 GITHUB_TOKEN 推送不会触发新的
+  # push 工作流（GitHub 故意为之，防止工作流自我递归），所以「推完等下一次构建」
+  # 这条路是不通的，只能这里推、这里紧接着构建。
+  publish:
+    if: >-
+      github.event_name == 'issues' &&
+      (startsWith(github.event.issue.title, '[发布]') ||
+       contains(github.event.issue.body, '### 板块'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 解析表单，写入内容文件
+        id: make
+        run: node scripts/from-issue.mjs
+
+      - name: 提交到 main
+        if: steps.make.outputs.changed == 'true'
+        run: |
+          git config user.name 'clio'
+          git config user.email 'clio@users.noreply.github.com'
+          git add src/content
+          git commit -F .publish-message.txt
+          git push
+
+      - name: 在 issue 里回复上线地址并关闭
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --body-file .publish-comment.md
+          gh issue close "${{ github.event.issue.number }}"
+
+      - name: 失败时把原因写回 issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --body "这篇没能发布，失败原因见 [本次运行的日志](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})。"
+
+  build:
+    needs: publish
+    # publish 被跳过（push / 定时 / 手动触发）时同样要构建，所以用 always() 兜住。
+    if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 走表单那条链路时，要拿 publish 刚推上去的那个提交；
+          # 其余触发方式用本次事件对应的提交，这样在分支上手动跑也能验证。
+          ref: ${{ github.event_name == 'issues' && 'main' || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # 构建本身不会发现"链接拼错了"这类问题——只有点下去才知道。
+      # 与其等线上 404，不如在这里拦下来。
+      - run: npm run check:links
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

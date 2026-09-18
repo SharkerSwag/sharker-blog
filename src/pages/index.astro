@@ -1,0 +1,73 @@
+---
+import { base } from '../lib/site';
+import Base from '../layouts/Base.astro';
+import BulletinWall from '../components/BulletinWall.astro';
+import EntryList from '../components/EntryList.astro';
+import { SITE } from '../lib/config';
+import { COLLECTIONS } from '../lib/collections';
+import { excerpt, isLive, loadCollection } from '../lib/entries';
+
+
+// 布告牌：置顶的永久保留，其余超过存活期的从墙上撤下来（文件不动）。
+const bulletin = await loadCollection('bulletin');
+const wall = bulletin.all.filter((entry) => isLive(entry));
+
+// 三个文字板块：各自取最新的几篇，置顶的排在最前。
+const sections = await Promise.all(
+  (['notes', 'papers', 'interview'] as const).map(async (name) => {
+    const { all } = await loadCollection(name);
+    return {
+      name,
+      label: COLLECTIONS[name].label,
+      count: all.length,
+      items: all.slice(0, SITE.homeLimit).map((entry: any) => ({
+        id: entry.id,
+        date: entry.data.pubDate,
+        lang: entry.data.lang,
+        title: entry.data.title ?? excerpt(entry.body ?? '', 42),
+        summary: entry.data.summary,
+        body: entry.body,
+        pinned: entry.data.pinned,
+      })),
+    };
+  }),
+);
+---
+
+<Base>
+  <p class="lede">
+    放在这里的东西：读完一篇论文的想法，某天忽然想说的两句话，面试前后攒下的东西。
+    不追更新频率，也不追读者。
+  </p>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>布告牌</h2>
+      <a href={`${base}bulletin/`}>全部 {wall.length > SITE.wallLimit ? `(${wall.length}) ` : ''}→</a>
+    </div>
+    <BulletinWall entries={wall} limit={SITE.wallLimit} />
+  </section>
+
+  {
+    sections.map((section) => (
+      <section class="section">
+        <div class="section-head">
+          <h2>{section.label}</h2>
+          <a href={`${base}${section.name}/`}>
+            {section.count > section.items.length ? `全部 ${section.count} 篇 →` : '全部 →'}
+          </a>
+        </div>
+        <EntryList items={section.items} collection={section.name} />
+      </section>
+    ))
+  }
+</Base>
+
+<style>
+  .lede {
+    color: var(--ink-soft);
+    font-size: 15px;
+    margin: 0 0 44px;
+    max-width: 50ch;
+  }
+</style>

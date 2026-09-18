@@ -1,0 +1,209 @@
+---
+import { base } from '../../lib/site';
+import Base from '../../layouts/Base.astro';
+import { COLLECTION_LABELS } from '../../lib/collections';
+import { fmtDate, loadEverything } from '../../lib/entries';
+
+const entries = await loadEverything();
+
+/** 按 UTC 年份归堆——和 fmtDate 保持一致，免得跨时区构建时年份错位。 */
+const groups = new Map<string, any[]>();
+for (const entry of entries) {
+  const year = String(entry.data.pubDate.getUTCFullYear());
+  if (!groups.has(year)) groups.set(year, []);
+  groups.get(year)!.push(entry);
+}
+
+const years = [...groups.entries()].sort((a, b) => Number(b[0]) - Number(a[0]));
+
+/** 一年里各板块的条数，铺在年份标题右边当"构成"。 */
+const compositionOf = (list: any[]) => {
+  const counts = new Map<string, number>();
+  for (const entry of list) counts.set(entry.type, (counts.get(entry.type) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, count]) => `${COLLECTION_LABELS[type] ?? type} ${count}`)
+    .join(' · ');
+};
+
+const dayOf = (date: Date) =>
+  `${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+---
+
+<Base title="归档 · Clio" description="全部记录，按年份铺开。" section="ARCHIVE">
+  <a class="back" href={base}>← 回首页</a>
+
+  <div class="section-head">
+    <h2>归档</h2>
+    <span class="count">{entries.length} 条 · {years.length} 年</span>
+  </div>
+
+  <p class="blurb">
+    写过的全部东西，按时间摊开。这里不筛不选，便利贴过期了也照样留着——
+    从墙上摘下来只是不想让板子太满，不是想让它消失。
+  </p>
+
+  {
+    years.length === 0 ? (
+      <p class="empty">还是空的。</p>
+    ) : (
+      <>
+        <nav class="jump" aria-label="跳到年份">
+          {years.map(([year, list]) => (
+            <a href={`#y${year}`}>
+              {year}
+              <span class="n">{list.length}</span>
+            </a>
+          ))}
+        </nav>
+
+        {years.map(([year, list]) => (
+          <section class="year" id={`y${year}`}>
+            <div class="year-head">
+              <h3>{year}</h3>
+              <span class="composition">{compositionOf(list)}</span>
+            </div>
+            <ul class="rows">
+              {list.map((entry: any) => (
+                <li>
+                  <span class="day">{dayOf(entry.data.pubDate)}</span>
+                  <span class="kind">{COLLECTION_LABELS[entry.type] ?? entry.type}</span>
+                  <a href={`${base}${entry.type}/${entry.id}/`}>
+                    {entry.data.title ?? '（便签）'}
+                  </a>
+                  {entry.data.lang === 'en' && <span class="lang">EN</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </>
+    )
+  }
+</Base>
+
+<style>
+  .blurb {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: -4px 0 22px;
+    max-width: 54ch;
+  }
+
+  .jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 30px;
+  }
+
+  .jump a {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #fbfaf5;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .jump a:hover {
+    border-color: #c9c5b6;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .n {
+    font-size: 10px;
+    color: var(--ink-faint);
+  }
+
+  .year {
+    margin-bottom: 34px;
+    scroll-margin-top: 16px;
+  }
+
+  .year-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-bottom: 7px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .year-head h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  .composition {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+  }
+
+  .rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .rows li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 2px;
+    border-bottom: 1px solid #f4f2ea;
+  }
+
+  .rows li:last-child {
+    border-bottom: 0;
+  }
+
+  .day {
+    flex: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .kind {
+    flex: none;
+    padding: 1px 6px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+  }
+
+  .rows a {
+    color: var(--ink);
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+
+  .rows a:hover {
+    color: var(--accent);
+  }
+
+  .empty {
+    margin: 0;
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+
+  @media (max-width: 520px) {
+    .kind {
+      display: none;
+    }
+  }
+</style>

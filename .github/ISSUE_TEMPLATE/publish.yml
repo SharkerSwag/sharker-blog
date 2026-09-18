@@ -1,0 +1,72 @@
+name: 写点东西
+description: 填完提交，内容会自动变成一篇 Markdown 并发布到 Clio。手机上也能用。
+title: "[发布] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        标题栏 `[发布] ` 后面写上这篇的标题就行。
+
+        - **布告牌**只要一段正文；标题随便起个能认出来的短词，它会用来生成网址。
+        - 想**修改**已经发出去的东西，直接去仓库改对应的 Markdown 文件，别走这里——
+          这里每次都新建一篇。
+        - 提交后大约一分钟上线，这个 issue 会被机器人自动关闭。
+  - type: dropdown
+    id: section
+    attributes:
+      label: 板块
+      description: 放在 Clio 的哪一栏。
+      options:
+        - 随笔（notes）
+        - 布告牌（bulletin）
+        - 论文阅读（papers）
+        - 面经与八股（interview）
+    validations:
+      required: true
+  - type: input
+    id: tags
+    attributes:
+      label: 标签
+      description: 用空格或逗号分开，留空也行。之后能在站内的「标签」页里顺着一根线翻回来。
+      placeholder: 算法 阅读笔记
+  - type: textarea
+    id: body
+    attributes:
+      label: 正文
+      description: 支持 Markdown。小节标题用 ## / ###，代码用三个反引号包起来。
+      placeholder: 正文写在这里。
+    validations:
+      required: true
+  - type: checkboxes
+    id: pinned
+    attributes:
+      label: 置顶
+      options:
+        - label: 置顶这篇（每个板块最多 3 篇；放在布告牌里还意味着这张便签不会过期）
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        **下面几项只跟「论文阅读」和「面经与八股」有关**，选的是随笔或布告牌的话，全部留空即可。
+  - type: input
+    id: venue
+    attributes:
+      label: 期刊 / 会议
+      placeholder: NeurIPS
+  - type: input
+    id: year
+    attributes:
+      label: 年份
+      placeholder: "2026"
+  - type: input
+    id: link
+    attributes:
+      label: 原文链接
+      placeholder: https://arxiv.org/abs/2501.00000
+  - type: input
+    id: topic
+    attributes:
+      label: 主题
+      description: 面经一般填分类词。
+      placeholder: 操作系统

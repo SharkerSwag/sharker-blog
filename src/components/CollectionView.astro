@@ -1,0 +1,80 @@
+---
+import { base } from '../lib/site';
+import { getCollection } from 'astro:content';
+import BulletinWall from './BulletinWall.astro';
+import EntryList from './EntryList.astro';
+import Pagination from './Pagination.astro';
+import { SITE } from '../lib/config';
+import { COLLECTIONS, type CollectionName } from '../lib/collections';
+import { excerpt, isLive, isVisible, slicePage, withPinned } from '../lib/entries';
+
+interface Props {
+  collection: CollectionName;
+  page: number;
+}
+
+const { collection, page } = Astro.props;
+const { label, blurb } = COLLECTIONS[collection];
+
+const entries = await getCollection(collection as any, ({ data }: any) => isVisible(data));
+const arranged = withPinned(entries as any);
+const total = arranged.all.length;
+
+if (arranged.overflow > 0) {
+  console.warn(
+    `[clio] ${label} 里有超过 ${SITE.pinLimit} 篇置顶，多出来的已按普通文章排序。`,
+  );
+}
+
+// 布告牌：还在墙上的排前面，已过期的沉到后面归档。
+const ordered =
+  collection === 'bulletin'
+    ? [
+        ...arranged.all.filter((entry: any) => isLive(entry)),
+        ...arranged.all.filter((entry: any) => !isLive(entry)),
+      ]
+    : arranged.all;
+
+const paged = slicePage(ordered, page);
+
+const items = paged.items.map((entry: any) => ({
+  id: entry.id,
+  date: entry.data.pubDate,
+  lang: entry.data.lang,
+  title: entry.data.title ?? excerpt(entry.body ?? '', 42),
+  summary: entry.data.summary,
+  body: entry.body,
+  pinned: entry.data.pinned,
+}));
+
+const basePath = `${base}${collection}/`;
+---
+
+<a class="back" href={base}>← 回首页</a>
+
+<div class="section-head">
+  <h2>{label}</h2>
+  <span class="count">
+    {total} 条{paged.total > 1 ? ` · ${paged.current}/${paged.total} 页` : ''}
+  </span>
+</div>
+
+<p class="blurb">{blurb}</p>
+
+{
+  collection === 'bulletin' ? (
+    <BulletinWall entries={paged.items} />
+  ) : (
+    <EntryList items={items} collection={collection} />
+  )
+}
+
+<Pagination current={paged.current} total={paged.total} basePath={basePath} />
+
+<style>
+  .blurb {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: -4px 0 20px;
+  }
+</style>
