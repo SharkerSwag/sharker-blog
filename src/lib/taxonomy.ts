@@ -68,6 +68,10 @@ export function buildTags(entries: any[]): TagBucket[] {
         bucket = { tag, slug, items: [], count: 0 };
         buckets.set(slug, bucket);
       }
+      // 同一篇里写了两次同一个标签（`tags: [算法, 算法]`，或者 `C++` 与 `c++`
+      // 这种大小写不同的写法）会归到同一个 slug 上，不拦一下就会把这篇
+      // 在标签页里列两遍——而 count 也跟着多算一次。
+      if (bucket.items.includes(entry)) continue;
       bucket.items.push(entry);
     }
   }

@@ -15,8 +15,12 @@ npm run dev
 
 ```
 npm run build         # 输出到 dist/
-npm run build && npm run check:links   # 构建 + 站内链接自检
+npm run check:content # 内容自检：源码里有没有会被浏览器执行的片段
+npm run check:links   # 站内链接自检（构建后跑，查 dist/）
 npm run preview       # 本地预览构建结果
+
+# 一次跑全：内容自检 → 构建 → 链接自检（CI 里就是这个顺序）
+npm run check:content && npm run build && npm run check:links
 ```
 
 ## 写作
@@ -61,10 +65,29 @@ GitHub 认这两个查询参数，会把新建文件页连内容一起填好。
 
 `.github/ISSUE_TEMPLATE/publish.yml` 定义一张表单，`.github/workflows/pages.yml` 里的 `publish` 任务在 issue 打开时把它解析成 Markdown 并提交。逻辑在 `scripts/from-issue.mjs`。
 
-两个细节值得知道：
+三个细节值得知道：
 
 - **推送用的是 `GITHUB_TOKEN`，而它推的提交不会触发新的 push 工作流**（GitHub 故意如此，防止工作流自我递归）。所以发布和构建必须在同一次运行里串起来做，不能"推完等下一次构建"。这就是 `publish` 和 `build` 写在同一个文件里的原因。
 - **表单只在新建时生效。** 想改已经发出去的内容，去仓库改文件，别重新提交一张表单。
+- **「正文」是表单的最后一个字段，不能往前挪。** 表单提交后会被渲染成 `### 板块`、`### 正文` 这样一串小节，解析脚本靠这个切分。而在正文里自己写 `### 年份`、`### 主题` 这种小节是很自然的（八股笔记里就有），一旦「正文」后面还跟着别的字段，那一行之后的内容就会被整段算进那个字段——正文从中间断掉，**而且不报错，只是安静地少一截**。
+  `scripts/from-issue.mjs` 因此做了两层防护：只认字段表里位置**比上一个更靠后**的标题（回退的一律当正文），同时把「正文」摆在表单最后。改表单顺序时，脚本里的 `FIELDS` 数组要一起改，它是有序的。
+
+### 谁能往站上写东西（这一条最要紧）
+
+**只有你一个人。** 每条通道都是这样，没有一条对外开口：
+
+| 通道 | 别人能不能用 | 靠什么拦住 |
+| --- | --- | --- |
+| `/write/` 写作台 | 不能 | 页面本身不设账号，但它最后一步是把浏览器送去 GitHub 的新建文件页——那一下要拿自己的账号提交，只有对仓库有写权限的人才做得成。别人能填、能预览，提交时停在 GitHub 的权限提示上。 |
+| Issue 表单 | 不能 | `publish` 任务里的 `github.event.issue.user.login == github.repository_owner`，机器人只认仓库主人自己开的 issue。`scripts/from-issue.mjs` 里还有第二道同样的校验。 |
+| 仓库网页改文件 / github.dev | 不能 | 还是 GitHub 的写权限。 |
+| 本地 `npm run new` | 不能 | 得先把仓库 clone 下来且有推送权限。 |
+
+Issue 那条要格外留意，因为它是唯一一个"看起来谁都能按"的入口。**workflow 里那个 `if` 不是可有可无的润色。**
+本仓库是公开的：去掉作者校验这一个条件，任何人在 Issues 里开一张标题以 `[发布]` 开头的 issue，都会让机器人以 `contents: write` 的权限把 TA 写的正文提交进 `main`，一分钟后就出现在站上——垃圾内容、广告链接，甚至一段能在读者浏览器里执行的脚本，都会进仓库历史，事后只能手工 revert。
+`config.yml` 里的 `blank_issues_enabled: false` 挡不住这件事：它只隐藏「空白 issue」那个入口，直接访问 `/issues/new?title=…&body=…` 照样能提交自由格式的 issue，一样会触发 `issues` 事件。
+
+两处校验都留着是有意的。这个脚本一跑就等于"写进仓库 + 提交 + 上线"，单点判断被改错（比如哪天顺手"简化"掉一行）的代价太大。
 
 ### 用脚手架新建（命令行）
 
@@ -87,6 +110,11 @@ npm run new -- bulletin            # 布告牌不需要标题
 | `papers/` | 论文阅读心得 | `title`, `pubDate` |
 | `interview/` | 面经与八股 | `title`, `pubDate` |
 
+> **别往这四个目录里放非文章的 `.md`。** 四个集合都用 `**/*.{md,mdx}` 递归匹配（子目录也算），
+> 所以随手丢一份 `说明.md` 进去，它会被当成一篇文章去校验 frontmatter，**构建直接失败**。
+> 想留备忘就写进这份 README，或者用 `.txt`。同理，`draft: true` 只是不上线，
+> 它仍然要满足 schema——没有 `title` 的草稿是存不住的，先写个占位标题。
+
 可选字段：
 
 - `summary` —— 列表页显示的一句话摘要。**不写也行**：会自动从正文裁一段当摘要
@@ -98,6 +126,51 @@ npm run new -- bulletin            # 布告牌不需要标题
 - `bulletin` 另有 `ttl`：这张便签在墙上停留的天数
 - `papers` 另有 `venue`、`year`、`link`
 - `interview` 另有 `topic`
+
+四种形态各复制一份就能用（`pubDate` 就是发布日，写成日期即可）：
+
+```markdown
+---
+title: 读《……》想到的
+pubDate: 2026-09-18
+tags: [算法, 图论]
+summary: 一句话摘要，不写也行
+---
+
+正文。
+```
+
+```markdown
+---
+pubDate: 2026-09-18
+---
+
+布告牌没有标题，就一两句话。
+```
+
+```markdown
+---
+title: Attention Is All You Need
+venue: NeurIPS
+year: 2017
+link: https://arxiv.org/abs/1706.03762
+pubDate: 2026-09-18
+tags: [Transformer]
+---
+
+读后心得。
+```
+
+```markdown
+---
+title: 操作系统常问的几个点
+topic: 操作系统
+pubDate: 2026-09-18
+tags: [面经]
+---
+
+正文。
+```
 
 ## 站内导航
 
@@ -137,6 +210,31 @@ Pagefind 是对的选择，但对**这个站**不是：它的分词对中文是�
 
 静态站只在构建时算日期，所以仓库里配了一个每天自动重建的定时任务（`.github/workflows/pages.yml` 里的 `schedule`）。没有它，过了期的便签会一直挂在墙上。定时任务只在默认分支上生效。
 
+## 内容里的 HTML 会被原样输出
+
+Astro **不转义** Markdown 里的 HTML。实测往 `.md` 里写这三样：
+
+```
+<script>…</script>
+<img src=x onerror=…>
+[点这里](javascript:…)
+```
+
+构建出来的页面里就是它们本身，在读者浏览器上照常跑。这不是配置错了，是 Astro 的默认行为——它假设内容作者是可信的。
+
+对本站来说这个假设成立（见上文「谁能往站上写东西」），所以没有为了它去改渲染管线。但"从别处拷一段 Markdown 过来"是常事，里面藏一个 `javascript:` 链接，点一下就中招，于是加了一道构建前的内容自检：
+
+```
+npm run check:content
+```
+
+发现可疑片段就报错退出，并指出文件与行号，CI 里也会跑（在 `npm run build` 之前，几百毫秒的事）。它**不改内容、不悄悄兜住**，只是把问题摆出来——因为这类事情出错的方式本来就是安静的，宁可构建失败让人看一眼。
+
+- 围栏代码块（``` 或 ~~~）和行内代码里的不算：那部分会被转义成文本，写安全笔记、贴 XSS 例子时不会误伤。
+- 确实需要在代码块外面原样写这样的 HTML，就在那一行加上 `<!-- allow-html -->`。
+
+另一种做法是"渲染时自动把危险链接的 href 摘掉"，没采用，理由记在 `astro.config.mjs` 里：Astro 7 的默认 Markdown 处理器换成了 Sätteri，`markdown.rehypePlugins` 要额外装 `@astrojs/markdown-remark` 才生效（不装就直接构建失败）。为一个小过滤把整条渲染管线换掉不划算。
+
 ## 可调参数
 
 `src/lib/config.ts`：
@@ -159,7 +257,7 @@ Pagefind 是对的选择，但对**这个站**不是：它的分词对中文是�
 
    一次性操作：仓库 → **Settings → Pages → Build and deployment → Source 选 "GitHub Actions"**。站点创建过一次之后，本仓库的 workflow 原样工作，不需要任何 token。
 
-   症状特别容易误判：`npm ci`、`npm run build`、`npm run check:links` 一路全绿，只有最后一步红。这跟你的代码和构建配置无关。
+   症状特别容易误判：`npm ci`、`npm run check:content`、`npm run build`、`npm run check:links` 一路全绿，只有最后一步红。这跟你的代码和构建配置无关。
 
 2. **仓库名必须和 `site.config.mjs` 里的 `SITE_BASE` 一致。** 现在写的是 `/sharker-blog`，所以仓库名应为 `sharker-blog`，线上地址即 `https://sharkerswag.github.io/sharker-blog/`。仓库改名只改这一行。
 
@@ -210,7 +308,8 @@ src/
     rss.xml.js                   订阅源
 scripts/
   new.mjs                  命令行写作脚手架
-  from-issue.mjs           把 Issue 表单变成 Markdown
+  from-issue.mjs           把 Issue 表单变成 Markdown（含作者校验）
+  check-content.mjs        构建前的内容自检（查可执行片段）
   check-links.mjs          构建后的站内链接自检
   lib/note.mjs             三个发文入口共用的零件（与 src/lib/compose.ts 规则一致）
 .github/

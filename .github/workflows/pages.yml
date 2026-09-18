@@ -29,8 +29,23 @@ jobs:
   # push 工作流（GitHub 故意为之，防止工作流自我递归），所以「推完等下一次构建」
   # 这条路是不通的，只能这里推、这里紧接着构建。
   publish:
+    # ★ 这个 if 里的第二行是整套部署里最要紧的一道闸：只有仓库主人自己开的
+    # issue 才会被发布。
+    #
+    # 少了它会发生什么：本仓库是公开的，任何人在 Issues 里开一张标题以「[发布]」
+    # 开头的 issue，这个 job 就会以 contents: write 的权限把 TA 写的正文提交进
+    # main，一分钟后就出现在站上。等于把博客的写权限挂到了公网上——垃圾内容、
+    # 广告链接、甚至一段能执行的 HTML 都能进仓库历史，之后只能手工 revert。
+    #
+    # 别指望 issue 表单本身能拦：config.yml 里的 blank_issues_enabled 只是隐藏
+    # 「空白 issue」那个入口，直接访问 /issues/new?title=…&body=… 照样能提交自由
+    # 格式的 issue，一样会触发 issues 事件。
+    #
+    # 所以判据只能是 github.event.issue.user.login——它由 GitHub 在服务端填好，
+    # 是认证过的身份，客户端伪造不了。和 github.repository_owner 比一次就够。
     if: >-
       github.event_name == 'issues' &&
+      github.event.issue.user.login == github.repository_owner &&
       (startsWith(github.event.issue.title, '[发布]') ||
        contains(github.event.issue.body, '### 板块'))
     runs-on: ubuntu-latest
@@ -89,6 +104,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # 内容自检放在构建之前：一遍扫源码就行，几百毫秒的事，
+      # 而它挡的是"Markdown 里混进了会在读者浏览器上执行的片段"——
+      # 这种问题构建本身永远发现不了（Astro 按设计原样输出 HTML），
+      # 只有扫源文件才知道。
+      - run: npm run check:content
       - run: npm run build
       # 构建本身不会发现"链接拼错了"这类问题——只有点下去才知道。
       # 与其等线上 404，不如在这里拦下来。

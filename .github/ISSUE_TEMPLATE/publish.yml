@@ -11,6 +11,10 @@ body:
         - 想**修改**已经发出去的东西，直接去仓库改对应的 Markdown 文件，别走这里——
           这里每次都新建一篇。
         - 提交后大约一分钟上线，这个 issue 会被机器人自动关闭。
+        - 这张表单只服务你一个人：机器人会核对 issue 的作者是不是仓库主人，
+          别人提交的 issue 不会被处理，也不会出现在站上。
+
+        **正文在最后一个字段**——上面那些都是元信息，一路填下来，最后再写内容。
   - type: dropdown
     id: section
     attributes:
@@ -29,14 +33,6 @@ body:
       label: 标签
       description: 用空格或逗号分开，留空也行。之后能在站内的「标签」页里顺着一根线翻回来。
       placeholder: 算法 阅读笔记
-  - type: textarea
-    id: body
-    attributes:
-      label: 正文
-      description: 支持 Markdown。小节标题用 ## / ###，代码用三个反引号包起来。
-      placeholder: 正文写在这里。
-    validations:
-      required: true
   - type: checkboxes
     id: pinned
     attributes:
@@ -70,3 +66,11 @@ body:
       label: 主题
       description: 面经一般填分类词。
       placeholder: 操作系统
+  - type: textarea
+    id: body
+    attributes:
+      label: 正文
+      description: 支持 Markdown。小节标题用 ## / ###，代码用三个反引号包起来。
+      placeholder: 正文写在这里。
+    validations:
+      required: true

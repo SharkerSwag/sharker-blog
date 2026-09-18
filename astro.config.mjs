@@ -15,5 +15,16 @@ export default defineConfig({
       theme: 'github-light',
       wrap: true,
     },
+
+    // 这里原本想挂一个 rehype 插件，把 `javascript:` 这类链接的 href 摘掉。
+    // 没做成，记一笔免得下次再试一遍：
+    // Astro 7 的默认 Markdown 处理器换成了 Sätteri，markdown.remarkPlugins /
+    // rehypePlugins 要额外装 @astrojs/markdown-remark 才生效（不装就直接构建失败，
+    // 报错在 config/validate.js 的 coerceLegacyMarkdownPlugins）。装它等于为了
+    // 一个小过滤把整条渲染管线换掉，不值。
+    //
+    // 替代方案见 scripts/check-content.mjs：构建前扫一遍内容源文件，
+    // 发现可疑片段就报错退出，和链接自检是同一套做法——不悄悄改渲染结果，
+    // 而是把问题摆出来。那道检查也在 CI 里跑。
   },
 });

@@ -18,6 +18,13 @@ import { COLLECTIONS } from '../lib/collections';
     确认无误后按一下 <b>Commit changes</b>，一两分钟后站上就有了。
   </p>
 
+  <p class="hint hint-note">
+    这一页没有登录、也没有密码——能不能发布由 GitHub 说了算：
+    最后那一下提交要拿自己的账号去做，只有对这个仓库有写权限的人才做得成。
+    所以别人点进来能填、能预览，但提交时会被 GitHub 挡在权限那一步；
+    草稿也只存在各自这台设备的浏览器里，不上传任何地方。
+  </p>
+
   <form
     class="composer"
     id="write-app"
@@ -132,6 +139,17 @@ import { COLLECTIONS } from '../lib/collections';
     color: var(--ink-soft);
     font-size: 14px;
     margin: 4px 0 26px;
+  }
+
+  /* 这段讲的是"没登录也不担心"，属于说明而不是操作指引。
+     给它一条左侧细线和一个更小的字号，别让人以为这也是一步操作。 */
+  .hint-note {
+    margin-top: -14px;
+    padding-left: 11px;
+    border-left: 2px solid var(--rule);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--ink-faint);
   }
 
   .hint b {

@@ -22,11 +22,19 @@ const CONTENT_DIR = join(ROOT, 'src', 'content');
 const COMMENT_FILE = join(ROOT, '.publish-comment.md');
 
 /**
- * 表单字段的标题。
- * 必须和 .github/ISSUE_TEMPLATE/publish.yml 里的 label 完全一致——
- * Issue 表单渲染成 Markdown 之后，字段名就是 `### <label>`。
+ * 表单字段，**顺序必须和 .github/ISSUE_TEMPLATE/publish.yml 里出现的顺序一致**。
+ * 必须和模板里的 label 完全一致——Issue 表单渲染成 Markdown 之后，字段名就是 `### <label>`。
+ *
+ * 顺序不只是给人看的：下面 parseSections 靠它来判断"这一行到底是表单字段，
+ * 还是作者自己在正文里写的小节标题"。改模板顺序时这个数组要同步改。
  */
-const FIELDS = ['板块', '标签', '正文', '置顶', '期刊 / 会议', '年份', '原文链接', '主题'];
+const FIELDS = ['板块', '标签', '置顶', '期刊 / 会议', '年份', '原文链接', '主题', '正文'];
+
+/**
+ * 正文长度上限。放这么宽是因为这个值不该在正常写作时被碰到，
+ * 它挡的是"手滑把一整份文档粘进来"——那会直接进仓库历史，事后清理很麻烦。
+ */
+const MAX_BODY = 40000;
 
 const COLLECTION_LABELS = {
   notes: '随笔',
@@ -49,13 +57,22 @@ const clean = (value) => {
 /**
  * 按 `### 字段名` 把正文切开。
  *
- * 只在标题命中已知字段名时才认为是新字段——否则文章正文里自己写的
- * `### 小节` 会被误当成表单字段，把内容切碎。
+ * 两道判定缺一不可：
+ *   1. 名字得在 FIELDS 里——否则文章正文里自己写的 `### 小节` 会被误当成表单字段；
+ *   2. 位置必须比上一个已接受的字段更靠后。
+ *
+ * 第 2 条是真正兜住的那一层。正文里写 `### 年份`、`### 主题` 这类小节标题完全
+ * 可能（八股笔记里"年份"就是个自然的小节名），只查名字的话，那一行之后的内容
+ * 会被整段算到「年份」字段里——正文从中间被切断，而且切掉的部分不会报错，
+ * 只是安静地消失。加上"顺序只能往前走"，任何回退的标题都退回普通正文。
+ * 模板里也把「正文」放在最后一个字段，两道加起来才真正安全。
  */
 function parseSections(body) {
   const found = new Map();
   let current = null;
   let buffer = [];
+  /** 已接受的最后一个字段在 FIELDS 中的位置。初始 -1 表示还没开始。 */
+  let cursor = -1;
 
   const flush = () => {
     if (current) found.set(current, clean(buffer.join('\n')));
@@ -64,9 +81,11 @@ function parseSections(body) {
 
   for (const line of String(body ?? '').replace(/\r\n/g, '\n').split('\n')) {
     const heading = /^###\s+(.+?)\s*$/.exec(line);
-    if (heading && FIELDS.includes(heading[1])) {
+    const at = heading ? FIELDS.indexOf(heading[1]) : -1;
+    if (at > cursor) {
       flush();
       current = heading[1];
+      cursor = at;
       continue;
     }
     if (current) buffer.push(line);
@@ -97,6 +116,22 @@ function main() {
   const issue = event.issue;
   if (!issue) die('事件载荷里没有 issue 字段，这个脚本只能处理 issues 事件。');
 
+  // 第二道闸：workflow 的 if 已经校验过一次作者，这里再校验一次。
+  // 冗余是有意的——这个脚本一跑就会把内容写进仓库并 commit 上线，
+  // 单点判断一旦哪天被改错（比如有人顺手把 if 里的条件删掉"简化"），
+  // 后果是博客对全网开放写入。两份判断都写着，改错一处的代价只是这个 job 不跑。
+  //
+  // 比的是 issue.user.login 和仓库所有者，两者都来自 GitHub 的服务端载荷，
+  // 不是 issue 正文里能伪造的东西。
+  const owner = event.repository?.owner?.login ?? '';
+  const author = issue.user?.login ?? '';
+  if (!owner || author !== owner) {
+    die(
+      `拒绝发布：这张 issue 的作者是「${author || '未知'}」，而仓库主人是「${owner || '未知'}」。` +
+        '这个发布通道只服务站点作者本人。',
+    );
+  }
+
   const sections = parseSections(issue.body ?? '');
 
   // 板块决定落到哪个目录。表单选项写成「随笔（notes）」这样的形式，这里把英文名抠出来。
@@ -113,6 +148,9 @@ function main() {
 
   const body = clean(sections.get('正文'));
   if (!body) die('「正文」是空的，没什么可发的。');
+  if (body.length > MAX_BODY) {
+    die(`正文 ${body.length} 字，超过 ${MAX_BODY} 字上限，像是整份文档被粘进来了。拆开发吧。`);
+  }
 
   const tags = parseTags(sections.get('标签'));
   const pinned = /\[[xX]\]/.test(clean(sections.get('置顶')));
