@@ -10,7 +10,8 @@
     "new": "node scripts/new.mjs",
     "icons": "node scripts/make-icons.mjs",
     "check:content": "node scripts/check-content.mjs",
-    "check:links": "node scripts/check-links.mjs"
+    "check:links": "node scripts/check-links.mjs",
+    "bench": "node scripts/bench-build.mjs"
   },
   "dependencies": {
     "astro": "^7.3.3",

@@ -12,3 +12,6 @@ dist/
 
 # 本地调试 scripts/from-issue.mjs 时随手 dump 的事件载荷
 tmp-event*.json
+
+# 压测（npm run bench）的跑分输出，只在本地看
+.bench-result.txt

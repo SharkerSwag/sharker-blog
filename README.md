@@ -18,6 +18,8 @@ npm run build         # 输出到 dist/
 npm run check:content # 内容自检：源码里有没有会被浏览器执行的片段
 npm run check:links   # 站内链接自检（构建后跑，查 dist/）
 npm run preview       # 本地预览构建结果
+npm run icons         # 重新生成站点图标（改了 make-icons.mjs 里的配色才需要）
+npm run bench         # 量构建耗时随篇数的增长，见「维护成本」
 
 # 一次跑全：内容自检 → 构建 → 链接自检（CI 里就是这个顺序）
 npm run check:content && npm run build && npm run check:links
@@ -36,6 +38,9 @@ npm run check:content && npm run build && npm run check:links
 | **习惯命令行** | `npm run new`（见下） |
 
 所有方式的结果完全一样：都是往 `src/content/` 里加一个 `.md` 文件。
+
+**写长文时别在线上改。** 打开 `npm run dev` 起本地服务，存盘即刷新，改到你满意为止——最后只提交一次，
+只等那一次发布的三十秒。线上来回改，每次都要等一整轮（见「维护成本」）。
 
 ### 「写点东西」页是怎么做到不用后端的
 
@@ -265,6 +270,37 @@ npm run icons     # 重建 public/ 下的三个图标文件
 
 写成 `/favicon.svg` 的话，浏览器会去域名根目录找——而站点挂在 `/<仓库名>/` 这个子路径下，根目录什么都没有，线上标签页就是一张空白。`npm run check:links` 会把这些链接一起刨，漏掉前缀会被拦下来。
 
+## 维护成本（实测，不是估计）
+
+写过一段时间之后会不会越来越慢、越来越难伺候？这两个问题都量过，结论是都不会。
+
+**一次发布的耗时拆解**（最近若干次运行的实测区间：27–39 秒）：
+
+| 环节 | 耗时 |
+| --- | --- |
+| 起 runner（`Set up job`） | 约 3 秒 |
+| `setup-node` | 约 6 秒 |
+| `npm ci`（命中缓存也快不了多少） | 约 6 秒 |
+| `check:content` + **`build`** + `check:links` | **约 2 秒** |
+| `upload-pages-artifact` | 约 1 秒 |
+| `deploy` + 上线后自检 | 约 6 秒 |
+
+读法：**真正构建网站只要 2 秒，剩下二十多秒全是 GitHub 每次现起一台机器的固定开销。** 这个开销与你的内容量无关，也不会随时间增长。
+
+**文章数量对构建时间的影响**（`npm run bench`，本地实测）：
+
+| 情况 | 页数 | 构建墙钟 |
+| --- | --- | --- |
+| 当前实际内容 | 20 | 10.3s |
+| 再加 100 篇 | 138 | 9.4s |
+| 再加 300 篇 | 358 | 11.8s |
+
+多 300 篇文章只多 1.5 秒（每篇约 5 毫秒）。注意第一档**反而比基线快**——固定开销的抖动比篇数的影响还大，也就是说这个量级上篇数根本测不出来。按这个斜率外推，写到一千篇也就多几秒。原因很直白：静态生成，每篇的工作量固定且小。
+
+**真正会随时间累积的只有一件事**：过期便利贴的 `.md` 文件仍留在 `src/content/bulletin/` 里（只是不再渲染到墙上，被 `isVisible` 滤掉了，也不拖慢构建）。想清就手动删。
+
+`npm run bench [篇数...]` 可以随时重测（默认 100 / 300 两档）。它会在 `src/content/notes/` 下临时生成 `zz-bench-*` 文件并在结束时删掉，中途被打断也会在信号处理里清干净——**但别在它运行期间 `git add -A`**。
+
 ## 可调参数
 
 `src/lib/config.ts`：
@@ -342,6 +378,7 @@ scripts/
   from-issue.mjs           把 Issue 表单变成 Markdown（含作者校验）
   check-content.mjs        构建前的内容自检（查可执行片段）
   check-links.mjs          构建后的站内链接自检
+  bench-build.mjs          量构建耗时随篇数的增长（npm run bench）
   lib/note.mjs             三个发文入口共用的零件（与 src/lib/compose.ts 规则一致）
 public/
   favicon.svg              标签页图标（矢量）
