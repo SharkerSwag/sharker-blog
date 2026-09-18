@@ -122,7 +122,50 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    # ★ 这个 if 不能省，它正是本站曾经"运行全绿、线上 404"的原因。
+    #
+    # 官方文档原文：依赖链上任意一环失败或被跳过，从该点起下游全部跳过
+    # （"a failure or skip applies to all jobs in the dependency chain from
+    #  the point of failure or skip onwards"）。
+    # push 触发的运行里 publish 必然是 skipped（它的 if 只对 issue 事件成立），
+    # 于是「跳过」沿链传下去——build 之所以还能跑，是因为它有 always()；
+    # deploy 当时没写，就被一路跳过。结果：整轮显示绿色 ✓、build 里每一步也全绿，
+    # 但站点从未发布，线上地址 404。
+    #
+    # 教训：绿色只说明"这次运行没报错"，不说明"东西上线了"。看运行结论不够，
+    # 要确认 deploy 那个 job 真的执行了。
+    #
+    # always() 用来打破跳过传播，后面再显式要求 build 真的成功——这样 publish 失败时
+    # （build 会跟着被跳过）deploy 也正确地不跑，而不是往空气里发布。
+    if: always() && needs.build.result == 'success'
     steps:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # 部署步骤返回成功，不等于地址能打开——上面那次就是这么骗过所有人的。
+      # 所以这里真去请求一次，把"上线成功"变成可验证的事实。
+      #
+      # 两处写法是刻意的，别顺手"简化"：
+      #   1. `|| true` —— run: 在 runner 上是 `bash -e`，而 curl 连接失败会返回非零，
+      #      直接写 `resp=$(curl ...)` 会让整个步骤在第一轮探测就中断，重试形同虚设。
+      #   2. 用 `${resp:-000}` 而不是 `|| echo 000` —— 实测 curl 会先打印 http_code
+      #      再以非零退出，后者会把两段输出拼成 "200000"，把成功误判成失败。
+      - name: 上线后自检
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          echo "站点地址：$PAGE_URL"
+          resp=""
+          for i in $(seq 1 24); do
+            resp=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 20 "$PAGE_URL" 2>/dev/null) || true
+            code="${resp:-000}"
+            echo "第 $i 次探测 → HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "✓ 线上可访问"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$PAGE_URL 部署完成但仍返回 $code。多数是 Pages 站点的 Source 没选 GitHub Actions，或站点指向了别的仓库。"
+          exit 1
