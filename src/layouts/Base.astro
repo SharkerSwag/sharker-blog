@@ -49,6 +49,16 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonical} />
     <link rel="alternate" type="application/rss+xml" title="Clio" href={`${base}rss.xml`} />
+
+    {/*
+      地址一律过一遍 base：站点挂在 /sharker-blog/ 这个子路径下，
+      写成 /favicon.svg 会去域名根目录找，那里什么都没有，线上标签页就是空白的。
+      check:links 会把这些链接也刨一遍，漏掉前缀会被拦下来。
+    */}
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="icon" href={`${base}favicon.ico`} sizes="32x32" />
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
+    <meta name="theme-color" content="#f5f6f7" />
   </head>
   <body>
     <div class="desk">

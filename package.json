@@ -8,6 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "new": "node scripts/new.mjs",
+    "icons": "node scripts/make-icons.mjs",
     "check:content": "node scripts/check-content.mjs",
     "check:links": "node scripts/check-links.mjs"
   },

@@ -235,6 +235,36 @@ npm run check:content
 
 另一种做法是"渲染时自动把危险链接的 href 摘掉"，没采用，理由记在 `astro.config.mjs` 里：Astro 7 的默认 Markdown 处理器换成了 Sätteri，`markdown.rehypePlugins` 要额外装 `@astrojs/markdown-remark` 才生效（不装就直接构建失败）。为一个小过滤把整条渲染管线换掉不划算。
 
+## 站点图标
+
+标签页上那个图标（米色机壳 + 深青屏 + 浅绿 C）由一条命令生成：
+
+```bash
+npm run icons     # 重建 public/ 下的三个图标文件
+```
+
+三份文件一起产出，**几何只写在 `scripts/make-icons.mjs` 里一份**：
+
+| 文件 | 用途 |
+| --- | --- |
+| `public/favicon.svg` | 现代浏览器用的矢量图标（Chrome / Edge / Firefox） |
+| `public/favicon.ico` | 内含 16 / 32 / 48 三档，给不认 SVG 图标的浏览器兜底 |
+| `public/apple-touch-icon.png` | 180×180，iOS 加到主屏幕时的图标 |
+
+之所以做成脚本生成而不是直接提交一个手写的 svg：`.ico` 和 apple-touch 都得从矢量图重新光栅化，手改只改得动 svg，另外两个会悄悄停在旧版本上。改颜色只动 `COLOR` 一处，三种格式一起重建。
+
+**C 外面那圈米色厚边不是装饰。** 方块若通体深青，在深色浏览器标签栏上会和背景糊成一片、轮廓整个消失；若通体米色，在白底标签栏上又太淡。深芯压浅底、米边压深底，两种底色下才都立得住。这个结论是实测出来的：把候选方案逐个缩到 16px，用最近邻放大看**真实像素**，分别铺在浅、深两种标签栏底色上比对。favicon 的成败在 16px 就定了，放大到 512px 好看没有意义。
+
+在 `<head>` 里声明时，**地址必须过一遍 `base`**：
+
+```astro
+<link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+<link rel="icon" href={`${base}favicon.ico`} sizes="32x32" />
+<link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
+```
+
+写成 `/favicon.svg` 的话，浏览器会去域名根目录找——而站点挂在 `/<仓库名>/` 这个子路径下，根目录什么都没有，线上标签页就是一张空白。`npm run check:links` 会把这些链接一起刨，漏掉前缀会被拦下来。
+
 ## 可调参数
 
 `src/lib/config.ts`：
@@ -308,10 +338,15 @@ src/
     rss.xml.js                   订阅源
 scripts/
   new.mjs                  命令行写作脚手架
+  make-icons.mjs           生成站点图标（npm run icons）
   from-issue.mjs           把 Issue 表单变成 Markdown（含作者校验）
   check-content.mjs        构建前的内容自检（查可执行片段）
   check-links.mjs          构建后的站内链接自检
   lib/note.mjs             三个发文入口共用的零件（与 src/lib/compose.ts 规则一致）
+public/
+  favicon.svg              标签页图标（矢量）
+  favicon.ico              16 / 32 / 48，老浏览器兜底
+  apple-touch-icon.png     180×180，iOS 主屏幕
 .github/
   ISSUE_TEMPLATE/publish.yml   「写点东西」表单
   workflows/pages.yml          发布 / 构建 / 部署 / 每日重建
