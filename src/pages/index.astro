@@ -36,8 +36,7 @@ const sections = await Promise.all(
 
 <Base>
   <p class="lede">
-    放在这里的东西：读完一篇论文的想法，某天忽然想说的两句话，面试前后攒下的东西。
-    不追更新频率，也不追读者。
+    读完一篇论文的想法，某天忽然想说的两句话，面试前后攒下的东西——都放在这里。
   </p>
 
   <section class="section">
@@ -45,7 +44,7 @@ const sections = await Promise.all(
       <h2>布告牌</h2>
       <a href={`${base}bulletin/`}>全部 {wall.length > SITE.wallLimit ? `(${wall.length}) ` : ''}→</a>
     </div>
-    <BulletinWall entries={wall} limit={SITE.wallLimit} />
+    <BulletinWall entries={wall} limit={SITE.wallLimit} addHref={`${base}write/?board=bulletin`} />
   </section>
 
   {
@@ -64,10 +63,13 @@ const sections = await Promise.all(
 </Base>
 
 <style>
+  /* 首页开场的一句。用自然句而不是"这里放什么什么："那种口号式排列——
+     它只是在说明这是个什么地方，不必有宣言的语气。 */
   .lede {
     color: var(--ink-soft);
     font-size: 15px;
-    margin: 0 0 44px;
-    max-width: 50ch;
+    line-height: 1.9;
+    margin: 0 0 36px;
+    max-width: 60ch;
   }
 </style>

@@ -54,8 +54,13 @@ const basePath = `${base}${collection}/`;
 
 <div class="section-head">
   <h2>{label}</h2>
-  <span class="count">
-    {total} 条{paged.total > 1 ? ` · ${paged.current}/${paged.total} 页` : ''}
+  <span class="head-tail">
+    <span class="count">
+      {total} 条{paged.total > 1 ? ` · ${paged.current}/${paged.total} 页` : ''}
+    </span>
+    <a class="head-write" href={`${base}write/?board=${collection}`}>
+      {collection === 'bulletin' ? '贴一张 →' : '写一篇 →'}
+    </a>
   </span>
 </div>
 
@@ -63,7 +68,7 @@ const basePath = `${base}${collection}/`;
 
 {
   collection === 'bulletin' ? (
-    <BulletinWall entries={paged.items} />
+    <BulletinWall entries={paged.items} addHref={`${base}write/?board=bulletin`} />
   ) : (
     <EntryList items={items} collection={collection} />
   )
@@ -76,5 +81,19 @@ const basePath = `${base}${collection}/`;
     color: var(--ink-soft);
     font-size: 14px;
     margin: -4px 0 20px;
+  }
+
+  .head-tail {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .head-write {
+    color: var(--ink-soft);
+  }
+
+  .head-write:hover {
+    color: var(--accent);
   }
 </style>

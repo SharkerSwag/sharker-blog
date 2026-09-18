@@ -21,16 +21,41 @@ npm run preview       # 本地预览构建结果
 
 ## 写作
 
-**不用命令行也能写。** 三条路，按"当时手上有什么"选：
+**不用命令行也能写。** 四条路，按"当时手上有什么"选：
 
 | 场景 | 做法 |
 | --- | --- |
-| **手机上、想随手发一条** | 仓库 → **Issues → New issue → 「写点东西」**，填表提交。几十秒后自动发布，issue 会被机器人关掉。 |
+| **想看着界面写** | 站上的 **写点东西**（`/write/`）——选板块、填内容，点「去发布」，GitHub 会带着填好的文件名和内容打开，按一下提交就上线。手机上同样能用。 |
+| **手机上、想随手发一条** | 布告牌墙上那张空的贴纸位，或者仓库 → **Issues → New issue → 「写点东西」**。 |
 | **电脑上写长文** | 在仓库页面按 `.` 键，会打开浏览器里的完整编辑器（github.dev）。左边改 Markdown，右边有预览，写完在左侧源代码管理面板里提交。 |
 | **改个错别字** | 直接打开那个 `.md` 文件点铅笔图标，提交。 |
 | **习惯命令行** | `npm run new`（见下） |
 
-三种方式的结果完全一样：都是往 `src/content/` 里加一个 `.md` 文件。表单只是替你把这个文件生成好。
+所有方式的结果完全一样：都是往 `src/content/` 里加一个 `.md` 文件。
+
+### 「写点东西」页是怎么做到不用后端的
+
+它不保存任何东西，只做一件事：把表单拼成一段 Markdown，再拼成 GitHub「新建文件」的地址——
+`https://github.com/<owner>/<repo>/new/main/src/content/<板块>?filename=<文件名>&value=<内容>`。
+GitHub 认这两个查询参数，会把新建文件页连内容一起填好。
+
+有两个地方要注意：
+
+- **`value` 有长度上限。** 网址太长时 GitHub 只回一句 "URL too long"，所以 `src/lib/compose.ts` 里设了
+  `URL_LIMIT`（按**编码后**的地址长度算，一个汉字会变成 9 个字符）。超了就自动降级为
+  「内容已复制到剪贴板，粘贴一下」，步骤多一步，但不会写到一半失败。
+- **仓库坐标是从 `site.config.mjs` 反推的**（见 `src/lib/site.ts`），不写第二处。改仓库名只改那一个文件。
+
+草稿自动存在浏览器的 localStorage 里，刷新不丢；「清空」才会抹掉。
+
+### 文件名规则（三条链路共用一套）
+
+文件名是「日期 + 标题里的英文词」，例如 `2026-09-18-attention-is-all-you-need.md`。
+中文标题取不出英文词，这时**退到时分**（`2026-09-18-1856.md`），而不是退成空串——
+退回空串的话同一天写第二条就会撞名，而网页那条路是在 GitHub 上新建文件，撞名会被直接拒绝。
+
+`src/lib/compose.ts`（浏览器）和 `scripts/lib/note.mjs`（Node）是同一套规则的两种实现，
+改一边记得同步另一边：前者不能引 Node API，后者要判重名，所以没法共用一份。
 
 ### Issue 表单是怎么工作的
 
@@ -49,7 +74,7 @@ npm run new -- notes 又是一年秋天    # 直接给板块和标题
 npm run new -- bulletin            # 布告牌不需要标题
 ```
 
-生成的文件名是「日期 + 标题里的英文词」。中文标题不会进文件名——那会让网址变成一串百分号编码。标题本身照常写在 frontmatter 里。
+生成的文件名是「日期 + 标题里的英文词」，中文标题退到时分（见上文「文件名规则」）。
 
 ### 手动新建
 
@@ -76,13 +101,17 @@ npm run new -- bulletin            # 布告牌不需要标题
 
 ## 站内导航
 
-四个板块之外，还有三个"找东西"的页面：
+四个板块之外，还有三个"找东西"的页面，外加一个"写东西"的页面：
 
 | 页面 | 说明 |
 | --- | --- |
+| `/write/` | 写作台。选板块、填内容，点「去发布」跳到填好的 GitHub 新建文件页。头部右上角那个「写点东西」按钮进这里；布告牌墙上那张空白贴纸位也进这里（带 `?board=bulletin`）。 |
 | `/search/` | 全文检索。**没有后端**：构建时生成一份 `search-index.json`，索引在浏览器里按需拉取（先碰搜索框才会下载），所以不影响其他页面。按 `/` 键可以直接跳到搜索框。 |
 | `/tags/` | 标签总览，按使用频次排。每个标签有自己的页面，页脚还会列出"相邻标签"（和它同时出现的其他标签）。 |
 | `/archive/` | 全部内容按年份摊开。已过期的便利贴也在这里，**过期只是从墙上摘下来，不是删除**。 |
+
+页脚只留 RSS。归档/标签/搜索在头部各有一个入口，同一批链接在页脚再出现一次没有增量，
+而且四个连着的行内链接之间没有间距，看着像"一整句话"，实际却是四个独立链接——既误导点击也显乱。
 
 ### 搜索为什么不用 Pagefind
 
@@ -117,7 +146,7 @@ Pagefind 是对的选择，但对**这个站**不是：它的分词对中文是�
 | `pageSize` | 10 | 列表页每页条数 |
 | `homeLimit` | 3 | 首页每个板块展示条数 |
 | `pinLimit` | 3 | 每个板块最多置顶几篇 |
-| `wallLimit` | 9 | 布告牌墙上最多贴几张 |
+| `wallLimit` | 18 | 布告牌墙上最多贴几张。贴纸 112px 起，宽屏一屏排得下六列，18 张正好三行 |
 | `bulletinTtlDays` | 7 | 便利贴默认停留天数 |
 
 ## 部署
@@ -159,16 +188,20 @@ src/
     Pagination.astro       分页控件
   lib/
     config.ts              可调参数
-    site.ts                带结尾斜杠的 base（拼链接一律用它）
+    site.ts                带结尾斜杠的 base（拼链接一律用它）+ 从地址反推的仓库坐标
     collections.ts         四个板块的名称与说明
     entries.ts             排序、置顶、过期、分页、摘要提取
     taxonomy.ts            标签归一化与聚合
-  scripts/search.ts        搜索页的前端逻辑
+    compose.ts             草稿 → Markdown / 文件名 / GitHub 新建文件地址
+  scripts/
+    search.ts              搜索页的前端逻辑
+    write.ts               写作台的前端逻辑
   pages/
     index.astro                  首页
     [collection]/index.astro     列表第 1 页
     [collection]/page/[page].astro 列表第 2 页起
     [collection]/[slug].astro    文章详情
+    write.astro                  写作台
     search.astro                 搜索
     tags/index.astro             标签总览
     tags/[tag].astro             单标签列表
@@ -179,7 +212,7 @@ scripts/
   new.mjs                  命令行写作脚手架
   from-issue.mjs           把 Issue 表单变成 Markdown
   check-links.mjs          构建后的站内链接自检
-  lib/note.mjs             两个发文入口共用的零件
+  lib/note.mjs             三个发文入口共用的零件（与 src/lib/compose.ts 规则一致）
 .github/
   ISSUE_TEMPLATE/publish.yml   「写点东西」表单
   workflows/pages.yml          发布 / 构建 / 部署 / 每日重建
@@ -192,3 +225,11 @@ scripts/
 **`getStaticPaths` 读不到本文件 frontmatter 里的变量。** Astro 会把它提成独立模块执行。所以板块名、标签聚合这类数据必须放在 `src/lib/` 下，再 import 进来。这条踩过两次。
 
 **端点用 `.ts` 后缀，不要用 `.js`。** `src/pages/search-index.json.ts` 可以写 TypeScript；写成 `.js` 的话里面不能用 TS 语法，会构建失败。
+
+**窄屏上布告牌只显示前 5 张。** `BulletinWall.astro` 里有一条 `.wall > li:nth-child(n + 6):not(.note-new) { display: none }`。
+原因是 360px 的手机上板子内宽只有约 244px，排两列刚好，18 张贴纸要滚九屏——那就不是"一眼扫过去"的墙了。
+`not(.note-new)` 不能省：省掉的话"贴一张"的入口会被自己这条规则藏起来。
+
+**量布局别靠看截图。** Chrome 命令行那个 `--screenshot` 不带移动端模拟，出来的图和真机不是一回事
+（会看起来像横向溢出，其实没有）。要看真机效果，用调试协议里的 `Emulation.setDeviceMetricsOverride`
+配 `mobile: true`，顺便还能把 `gridTemplateColumns` 读出来数一下排了几列。

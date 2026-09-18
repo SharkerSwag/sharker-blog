@@ -1,0 +1,450 @@
+---
+import { base, REPO } from '../lib/site';
+import Base from '../layouts/Base.astro';
+import { BOARD_HINTS, BOARD_ORDER } from '../lib/compose';
+import { COLLECTIONS } from '../lib/collections';
+
+// 这个页面不保存任何东西，它只是把"填表"变成"一个填好的 GitHub 新建文件页"。
+// 所以没有后端、没有登录、没有依赖——静态站能做的事就到这儿，够用了。
+---
+
+<Base title="写点东西 · Clio" description="在网页上写一条，交给 GitHub 提交。" section="WRITE">
+  <a class="back" href={base}>← 回首页</a>
+
+  <h1>写点东西</h1>
+
+  <p class="hint">
+    填完点「去发布」，会打开 GitHub 的新建文件页，文件名和内容都已经替你填好，
+    确认无误后按一下 <b>Commit changes</b>，一两分钟后站上就有了。
+  </p>
+
+  <form
+    class="composer"
+    id="write-app"
+    data-owner={REPO.owner}
+    data-repo={REPO.name}
+    data-branch={REPO.branch}
+    data-board="bulletin"
+  >
+    <fieldset class="boards">
+      <legend>写在哪里</legend>
+      {
+        BOARD_ORDER.map((board) => (
+          <label class="board">
+            <input type="radio" name="board" value={board} checked={board === 'bulletin'} />
+            <span class="board-box">
+              <span class="board-name">{COLLECTIONS[board].label}</span>
+              <span class="board-hint">{BOARD_HINTS[board]}</span>
+            </span>
+          </label>
+        ))
+      }
+    </fieldset>
+
+    <label class="field" data-when="titled">
+      <span class="field-label">标题</span>
+      <input type="text" name="title" autocomplete="off" placeholder="一句话说清这篇写的是什么" />
+    </label>
+
+    <label class="field">
+      <span class="field-label">正文 <em>支持 Markdown</em></span>
+      <textarea
+        name="body"
+        rows="9"
+        placeholder="想到什么写什么。空行分段，## 是小节标题，# 开头是标签。"></textarea>
+    </label>
+
+    <details class="extra">
+      <summary>补充信息（可以不填）</summary>
+
+      <div class="extra-grid">
+        <label class="field" data-when="titled">
+          <span class="field-label">摘要</span>
+          <input type="text" name="summary" placeholder="留空就从正文自动取" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">标签</span>
+          <input type="text" name="tags" placeholder="逗号分隔，如：算法, 系统" />
+        </label>
+
+        <label class="field" data-when="papers">
+          <span class="field-label">期刊 / 会议</span>
+          <input type="text" name="venue" placeholder="NeurIPS" />
+        </label>
+
+        <label class="field" data-when="papers">
+          <span class="field-label">年份</span>
+          <input type="text" name="year" inputmode="numeric" placeholder="2017" />
+        </label>
+
+        <label class="field field-wide" data-when="papers">
+          <span class="field-label">原文链接</span>
+          <input type="text" name="link" placeholder="https://" />
+        </label>
+
+        <label class="check" data-when="titled">
+          <input type="checkbox" name="lang" value="en" />
+          <span>用英文写的（标题旁标 EN，不翻译内容）</span>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="pinned" />
+          <span data-pin="post">置顶（排在这个板块最前）</span>
+          <span data-pin="bulletin">钉住不过期（便签默认 7 天后从墙上摘下来）</span>
+        </label>
+      </div>
+    </details>
+
+    <p class="target">将创建 <code data-path>src/content/bulletin/…</code></p>
+
+    <div class="actions">
+      <button type="submit" class="btn-go">去发布 ↗</button>
+      <button type="button" class="btn" data-copy>复制 Markdown</button>
+      <button type="button" class="btn" data-reset>清空</button>
+    </div>
+
+    <p class="status" data-status role="status" aria-live="polite"></p>
+
+    <textarea class="manual" data-manual rows="8" hidden readonly aria-label="手动复制用"></textarea>
+  </form>
+
+  <details class="peek">
+    <summary>看一眼会写成什么</summary>
+    <pre data-preview></pre>
+  </details>
+
+  <p class="foot-note">
+    草稿会自动存在这台设备的浏览器里，刷新不丢；「清空」才会抹掉。
+    电脑上想边写边看效果，用 <code>npm run dev</code> 更顺手。
+  </p>
+</Base>
+
+<script>
+  import { initWrite } from '../scripts/write';
+
+  const root = document.getElementById('write-app');
+  if (root) initWrite(root as HTMLFormElement);
+</script>
+
+<style>
+  .hint {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: 4px 0 26px;
+  }
+
+  .hint b {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* ---------- 板块选择：System 7 的列表行 ---------- */
+
+  .boards {
+    margin: 0 0 24px;
+    padding: 0;
+    border: 0;
+  }
+
+  .boards legend {
+    padding: 0;
+    margin-bottom: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+  }
+
+  .board {
+    display: block;
+    cursor: pointer;
+  }
+
+  .board input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .board-box {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 7px 11px;
+    border: 1px solid var(--rule);
+    border-bottom-width: 0;
+    background: #fbfaf5;
+  }
+
+  .board:last-of-type .board-box {
+    border-bottom-width: 1px;
+  }
+
+  .board input:checked + .board-box {
+    /* 用屏幕那圈深青绿而不是链接蓝：这是 CRT 上的选中项，
+       不是一个网页表单控件，蓝色在这个配色里太跳。 */
+    background: var(--screen);
+    border-color: var(--screen);
+    color: #fff;
+  }
+
+  .board input:focus-visible + .board-box {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .board-name {
+    flex: none;
+    min-width: 6em;
+    font-size: 14px;
+  }
+
+  .board-hint {
+    font-size: 12.5px;
+    opacity: 0.72;
+  }
+
+  /* ---------- 表单 ---------- */
+
+  .field {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 5px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+  }
+
+  .field-label em {
+    font-style: normal;
+    letter-spacing: 0;
+    opacity: 0.75;
+  }
+
+  input[type='text'],
+  textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #c9c5b6;
+    border-radius: 0;
+    background: #fbfaf5;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 14.5px;
+    line-height: 1.7;
+  }
+
+  textarea {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    resize: vertical;
+    /* 必须用 height：rows 撑起来的高度不受 min-height 约束，
+       只写 min-height 的话便签的框还是九行高。 */
+    height: 200px;
+    min-height: 92px;
+  }
+
+  /* 便签是一两句话。给它一个九行高的框，会让人以为这儿要写很多，
+     结果反而不敢下笔——输入框的大小本身就在暗示该写多少。 */
+  .composer[data-board='bulletin'] textarea {
+    height: 92px;
+  }
+
+  input[type='text']:focus,
+  textarea:focus {
+    outline: 0;
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  /* 板块决定哪些字段有意义：随笔没有期刊，便签没有标题。 */
+  .composer[data-board='bulletin'] [data-when='titled'],
+  .composer:not([data-board='papers']) [data-when='papers'] {
+    display: none;
+  }
+
+  .extra {
+    margin: 0 0 20px;
+    border: 1px solid var(--rule);
+    background: #f7f5ee;
+    padding: 9px 13px;
+  }
+
+  .extra summary {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  .extra-grid {
+    padding-top: 14px;
+  }
+
+  .extra-grid .field:last-child {
+    margin-bottom: 4px;
+  }
+
+  .field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  [data-pin] {
+    display: none;
+  }
+
+  /* 置顶在布告牌里是另一层意思，标签文字跟着换。 */
+  .composer[data-board='bulletin'] [data-pin='bulletin'],
+  .composer:not([data-board='bulletin']) [data-pin='post'] {
+    display: inline;
+  }
+
+  .target {
+    margin: 0 0 16px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  .target code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: #f2f0e7;
+    padding: 2px 6px;
+  }
+
+  /* ---------- 按钮：直角加硬阴影，按下去真的会陷进去 ---------- */
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn,
+  .btn-go {
+    padding: 7px 15px;
+    border: 1px solid #b9b4a3;
+    border-radius: 0;
+    background: var(--shell);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #b9b4a3;
+  }
+
+  .btn-go {
+    background: #eae5d5;
+    font-weight: 600;
+  }
+
+  .btn:hover,
+  .btn-go:hover {
+    background: #efeadb;
+  }
+
+  .btn:active,
+  .btn-go:active {
+    box-shadow: none;
+    transform: translate(2px, 2px);
+  }
+
+  .status {
+    flex-basis: 100%;
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .status[data-tone='bad'] {
+    color: #a8452f;
+  }
+
+  .manual {
+    margin-top: 12px;
+  }
+
+  .peek {
+    margin-top: 34px;
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+  }
+
+  .peek summary {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    cursor: pointer;
+  }
+
+  .peek pre {
+    margin: 12px 0 0;
+    padding: 14px 16px;
+    background: #efece1;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+
+  .foot-note {
+    margin: 28px 0 0;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  .foot-note code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: #f2f0e7;
+    padding: 1px 5px;
+  }
+
+  @media (min-width: 620px) {
+    .extra-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 18px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .board-box {
+      flex-direction: column;
+      gap: 2px;
+      padding: 9px 11px;
+    }
+
+    .board-name {
+      min-width: 0;
+    }
+
+    /* 手机上按钮排一行会把文字挤断，主按钮独占一行更清楚。 */
+    .btn-go {
+      flex-basis: 100%;
+      text-align: center;
+    }
+  }
+</style>

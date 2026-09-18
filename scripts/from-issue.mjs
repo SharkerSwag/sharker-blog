@@ -15,7 +15,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE_URL } from '../site.config.mjs';
-import { frontmatter, slugify, today, uniquePath } from './lib/note.mjs';
+import { fileStem, frontmatter, today, uniquePath } from './lib/note.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CONTENT_DIR = join(ROOT, 'src', 'content');
@@ -135,10 +135,9 @@ function main() {
   const dir = join(CONTENT_DIR, collection);
   mkdirSync(dir, { recursive: true });
 
-  // 中文标题里可能一个英文词都没有，那就用 issue 编号兜底，
-  // 至少保证网址是干净的 ASCII，且下次还能对上号。
-  const stem = slugify(title) || `n${issue.number}`;
-  const target = uniquePath(dir, [today(), stem].join('-'));
+  // 中文标题里可能一个英文词都没有，那就退到时分兜底（和命令行、网页写作台同一套规则）。
+  // 这里还有 uniquePath 兜第二层：同一分钟提交两条也不会互相覆盖。
+  const target = uniquePath(dir, fileStem(today(), title));
   const relative_ = `src/content/${collection}/${target.split(/[\\/]/).pop()}`;
 
   writeFileSync(target, `${frontmatter(fields)}${body}\n`, 'utf8');

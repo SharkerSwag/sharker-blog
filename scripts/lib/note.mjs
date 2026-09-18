@@ -18,6 +18,19 @@ export const today = () =>
   }).format(new Date());
 
 /**
+ * 时分，形如 1622。只用来给文件名兜底，不进 frontmatter。
+ */
+export const timeTag = (now = new Date()) =>
+  new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .format(now)
+    .replace(/[^0-9]/g, '');
+
+/**
  * 标题 → 文件名片段。
  *
  * 只取 ASCII 字母数字：中文标题直接进网址会变成一串 %E5%8F%88…，
@@ -30,6 +43,17 @@ export const slugify = (text = '') =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 48);
+
+/**
+ * 文件名主体：日期 + 标题里的英文词，取不出英文词时退到时分。
+ *
+ * 兜底不能是空串——中文标题很常见，退回空串后文件名只剩日期，
+ * 同一天写第二条就撞名。本地有 uniquePath 会自动加 -2，
+ * 但网页写作台没有这一层，撞名会被 GitHub 直接拒绝。
+ * 三条发布链路（命令行 / 表单 / 网页）用同一套规则，所以这里统一兜底。
+ */
+export const fileStem = (date, title = '') =>
+  [date, slugify(title) || timeTag()].join('-');
 
 /** 同名时往后加序号，绝不覆盖已有文件。 */
 export function uniquePath(dir, base) {

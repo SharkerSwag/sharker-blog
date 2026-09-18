@@ -13,7 +13,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { frontmatter, slugify, today, uniquePath } from './lib/note.mjs';
+import { fileStem, frontmatter, today, uniquePath } from './lib/note.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CONTENT_DIR = join(ROOT, 'src', 'content');
@@ -91,7 +91,7 @@ async function main() {
   const dir = join(CONTENT_DIR, kind);
   mkdirSync(dir, { recursive: true });
 
-  const base = [date, slugify(title)].filter(Boolean).join('-');
+  const base = fileStem(date, title);
   const target = uniquePath(dir, base);
   writeFileSync(target, buildFile(kind, title, summary), 'utf8');
 

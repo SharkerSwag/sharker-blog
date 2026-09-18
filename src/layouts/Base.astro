@@ -94,6 +94,14 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
                   }
                 </nav>
 
+                <a
+                  class="write-link"
+                  href={`${base}write/`}
+                  class:list={[here === 'write' && 'is-active']}
+                >
+                  写点东西
+                </a>
+
                 <details class="menu">
                   <summary aria-label="目录">
                     <span class="bars" aria-hidden="true" />
@@ -103,6 +111,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
                     <div class="menu-group">
                       {tools.map(([slug, label]) => <a href={`${base}${slug}/`}>{label}</a>)}
                     </div>
+                    <a class="menu-write" href={`${base}write/`}>写点东西</a>
                     <a class="menu-sub" href={`${base}rss.xml`}>RSS 订阅</a>
                   </nav>
                 </details>
@@ -115,11 +124,8 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
 
             <footer class="site-foot">
               <p class="creed">Clio —— 名字取自希腊神话中掌管历史与记录的缪斯。</p>
-              <p class="foot-links">
-                <a href={`${base}archive/`}>归档</a>
-                <a href={`${base}tags/`}>标签</a>
-                <a href={`${base}search/`}>搜索</a>
-                <a href={`${base}rss.xml`}>RSS</a>
+              <p class="foot-rss">
+                <a href={`${base}rss.xml`}>RSS 订阅 ↗</a>
               </p>
             </footer>
           </div>
@@ -191,7 +197,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
   /* ---------- 机身 ---------- */
 
   .desk {
-    max-width: 740px;
+    max-width: 900px;
     margin: 0 auto;
   }
 
@@ -395,6 +401,30 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     font-weight: 600;
   }
 
+  /* 头部唯一一个"动作"入口，做成按钮的样子。
+     它和旁边那些链接性质不同：那些是去哪儿看，这个是去写。 */
+  .write-link {
+    padding: 4px 11px;
+    border: 1px solid #c9c5b6;
+    background: #fbfaf5;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .write-link:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .write-link.is-active {
+    border-color: #b9b4a3;
+    background: var(--shell);
+    color: var(--ink);
+  }
+
   /* ---------- 窄屏目录（三条杠） ---------- */
 
   .menu {
@@ -478,6 +508,12 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     text-decoration: none;
   }
 
+  .menu-panel .menu-write {
+    margin-top: 4px;
+    border-top: 1px solid var(--rule);
+    color: var(--accent);
+  }
+
   .menu-panel .menu-sub {
     margin-top: 4px;
     border-top: 1px solid var(--rule);
@@ -515,14 +551,22 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     margin: 0;
   }
 
-  .foot-links {
+  /* 页脚只留 RSS。
+     归档/标签/搜索在头部已经各有一个入口，摆在页脚是同一批链接出现两次；
+     而且四个连着的行内链接之间没有间距，看上去像一句话（实际是四个独立链接），
+     既误导点击也显得杂。订阅方式不同——它不在头部，值得单独留一个位置。 */
+  .foot-rss {
     font-family: var(--mono);
     font-size: 11.5px;
   }
 
-  .creed {
-    max-width: 40ch;
+  .foot-rss a {
+    color: var(--ink-faint);
   }
+
+  /* 这行以前限宽 40ch，但 ch 是按数字 0 的宽度算的，
+     中文字宽差不多是它的两倍——于是这句话被硬生生折成两行。
+     页脚本来就只有它和 RSS 两项，不折行也放得下。 */
 
   /* ---------- 通用元素 ---------- */
 
@@ -624,7 +668,9 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
   /* ---------- 正文 ---------- */
 
   .prose {
-    font-size: 15.5px;
+    font-size: 16px;
+    /* 长网址、长单词不换行会把窄屏撑出一条横向滚动，整页跟着歪。 */
+    overflow-wrap: anywhere;
   }
 
   .prose h2 {
@@ -728,7 +774,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     }
 
     .screen-body {
-      padding: 22px 17px 28px;
+      padding: 20px 14px 24px;
     }
 
     .screen-bar,
@@ -751,6 +797,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
       font-size: 20px;
     }
 
+    /* 板块和索引入口都收进三条杠；「写点东西」是动作而不是导航，留在外面。 */
     .site-nav,
     .site-tools {
       display: none;
@@ -758,6 +805,27 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
 
     .menu {
       display: block;
+    }
+
+    .head-right {
+      gap: 10px;
+    }
+
+    /* 宽表在手机上必然溢出，让它自己横向滚，别把整页带歪。 */
+    .prose table {
+      display: block;
+      overflow-x: auto;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .brand-sub {
+      display: none;
+    }
+
+    .write-link {
+      padding: 4px 8px;
+      font-size: 11px;
     }
   }
 </style>
