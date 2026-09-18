@@ -124,11 +124,17 @@ Pagefind 是对的选择，但对**这个站**不是：它的分词对中文是�
 
 推送到 `main` 分支后，GitHub Actions 自动构建并发布到 GitHub Pages。
 
-### 两个前提
+### 三个前提
 
-1. **仓库名必须和 `site.config.mjs` 里的 `SITE_BASE` 一致。** 现在写的是 `/sharker-blog`，所以仓库名应为 `sharker-blog`，线上地址即 `https://sharkerswag.github.io/sharker-blog/`。仓库改名只改这一行。
+1. **仓库要在 Settings → Pages 里启用一次。** 建库后从没发过 Pages 时，workflow 跑到 `configure-pages` 必红，而且**这一步在 workflow 里无解**——创建 Pages 站点是仓库管理操作，`GITHUB_TOKEN` 按设计永远没有该权限（所以 `enablement: true` 只会把错误换成另一句 `Resource not accessible by integration`）。
 
-2. **GitHub Free 账号只支持公开仓库发布 Pages。** 私有仓库需要 GitHub Pro / Team / Enterprise。学生可以免费申请 GitHub Student Developer Pack 拿到 Pro。
+   一次性操作：仓库 → **Settings → Pages → Build and deployment → Source 选 "GitHub Actions"**。站点创建过一次之后，本仓库的 workflow 原样工作，不需要任何 token。
+
+   症状特别容易误判：`npm ci`、`npm run build`、`npm run check:links` 一路全绿，只有最后一步红。这跟你的代码和构建配置无关。
+
+2. **仓库名必须和 `site.config.mjs` 里的 `SITE_BASE` 一致。** 现在写的是 `/sharker-blog`，所以仓库名应为 `sharker-blog`，线上地址即 `https://sharkerswag.github.io/sharker-blog/`。仓库改名只改这一行。
+
+3. **私有仓库要发 Pages，账号需具备 Pro 及以上**（学生可免费申请 GitHub Student Developer Pack 获得）。本仓库是公开的，不受此限；但注意**私有仓库只保护源码，站点本身仍然是全网上可访问的**。
 
 ### 关于内部链接，有一条硬约定
 

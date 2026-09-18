@@ -38,9 +38,9 @@ jobs:
       contents: write
       issues: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -79,12 +79,12 @@ jobs:
     if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # 走表单那条链路时，要拿 publish 刚推上去的那个提交；
           # 其余触发方式用本次事件对应的提交，这样在分支上手动跑也能验证。
           ref: ${{ github.event_name == 'issues' && 'main' || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -93,12 +93,25 @@ jobs:
       # 构建本身不会发现"链接拼错了"这类问题——只有点下去才知道。
       # 与其等线上 404，不如在这里拦下来。
       - run: npm run check:links
-      # enablement: 仓库第一次部署时，Pages 站点还不存在，这个开关让 action 顺手把它建出来。
-      # 不加的话，新仓库的首轮运行必定失败在 configure-pages，而报错只说
-      # "Get Pages site failed"，不会告诉你要去 Settings 里把 Source 改成 GitHub Actions。
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # ★ 新仓库第一次跑到这里必定失败，而且在这一步里无解——只能手动开一次 Pages。
+      #
+      # 没开 Pages 时，这一步去取站点信息拿到 404，直接判死整轮运行；报错只说
+      # "Get Pages site failed"，不告诉你要去哪开。而上一步的链接自检、上上步的构建
+      # 都是绿的，所以症状是"日志全绿只有最后红"，极易误判成构建问题。
+      #
+      # 别试 enablement: true。它读起来正是解法，但只会换一个同样不知所云的错：
+      # "Create Pages site failed. Error: Resource not accessible by integration"。
+      # 因为创建 Pages 站点属于仓库管理操作，而 GITHUB_TOKEN 按设计永远没有管理仓库的权限——
+      # permissions 支持的范围里根本没有 administration 这一项，所以在 workflow 里
+      # 授予任何权限都修不好它，那个开关只对 PAT 或 GitHub App token 有效。
+      #
+      # 真正的修法：Settings → Pages → Build and deployment → Source 选 "GitHub Actions"。
+      # 站点被创建一次之后，本文件原样工作，默认 token 永久够用。
+      #
+      # 上面三个 action 用 v5/v5/v6 是为了避开 Node 20 的弃用警告
+      # （checkout@v4、setup-node@v4、configure-pages@v5 都还在 Node 20 上，
+      # 会被强制跑在 Node 24 并打黄）。那几行黄标只是警告，不会让运行失败。
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
