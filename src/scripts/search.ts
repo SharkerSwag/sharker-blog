@@ -126,19 +126,21 @@ export function initSearch(root: HTMLElement) {
   if (!input || !results || !status || !indexUrl) return;
 
   let index: Item[] | null = null;
-  let loading: Promise<Item[]> | null = null;
+  let loading: Promise<Item[] | null> | null = null;
   let collection = '';
 
+  let loadFailed=false;
+  const retry=document.createElement('button');
+  retry.type='button';retry.className='chip';retry.textContent='重新加载';retry.hidden=true;
+  status.after(retry);
   const load = () => {
-    if (index) return Promise.resolve(index);
-    if (!loading) {
-      loading = fetch(indexUrl)
-        .then((response) => (response.ok ? response.json() : []))
-        .catch(() => [])
-        .then((data: Item[]) => {
-          index = Array.isArray(data) ? data : [];
-          return index;
-        });
+    if(index)return Promise.resolve(index);
+    if(!loading){
+      loadFailed=false;retry.hidden=true;
+      loading=fetch(indexUrl).then(response=>{if(!response.ok)throw new Error('Index unavailable');return response.json();})
+        .then((data:Item[])=>{if(!Array.isArray(data))throw new Error('Invalid index');index=data;return index;})
+        .catch(()=>{loadFailed=true;return null;})
+        .finally(()=>{loading=null;});
     }
     return loading;
   };
@@ -148,6 +150,8 @@ export function initSearch(root: HTMLElement) {
   };
 
   function render(query: string) {
+    retry.hidden=!loadFailed;
+    if(loadFailed){results!.replaceChildren();setStatus('搜索暂时无法加载，请检查网络后重试。');return;}
     const terms = splitTerms(query);
     results!.replaceChildren();
 
@@ -231,11 +235,14 @@ export function initSearch(root: HTMLElement) {
   }
 
   let timer = 0;
+  let requestVersion=0;
   const run = (updateAddress = true) => {
     const query = input.value;
+    const version=++requestVersion;
     window.clearTimeout(timer);
     timer = window.setTimeout(async () => {
-      if (query.trim()) await load();
+      if(query.trim()){setStatus('正在载入索引…');await load();}
+      if(version!==requestVersion)return;
       render(query);
       if (updateAddress) {
         const params = new URLSearchParams();
@@ -248,16 +255,18 @@ export function initSearch(root: HTMLElement) {
   };
 
   // 第一次碰输入框才去拉索引，不打开搜索页的人不受影响。
-  input.addEventListener('focus', () => void load());
+  input.addEventListener('focus', () => {void load().then(()=>render(input.value));});
+  retry.addEventListener('click',()=>{setStatus('正在载入索引…');void load().then(()=>render(input.value));});
   input.addEventListener('input', () => run());
 
   filterBar?.addEventListener('click', (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-collection]');
     if (!button) return;
     const next = button.dataset.collection ?? '';
-    collection = collection === next ? '' : next;
+    collection = next;
     filterBar.querySelectorAll<HTMLButtonElement>('[data-collection]').forEach((item) => {
-      item.classList.toggle('is-on', (item.dataset.collection ?? '') === collection);
+      const active=(item.dataset.collection ?? '')===collection;
+      item.classList.toggle('is-on',active);item.setAttribute('aria-pressed',String(active));
     });
     run();
   });
@@ -277,12 +286,13 @@ export function initSearch(root: HTMLElement) {
   if (presetCollection) {
     collection = presetCollection;
     filterBar?.querySelectorAll<HTMLButtonElement>('[data-collection]').forEach((item) => {
-      item.classList.toggle('is-on', (item.dataset.collection ?? '') === presetCollection);
+      const active=(item.dataset.collection ?? '')===presetCollection;
+      item.classList.toggle('is-on',active);item.setAttribute('aria-pressed',String(active));
     });
   }
   if (preset) {
     input.value = preset;
-    void load().then(() => render(preset));
+    run(false);
   } else {
     render('');
   }

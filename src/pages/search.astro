@@ -35,10 +35,10 @@ const indexUrl = `${base}search-index.json`;
     </div>
 
     <div class="filters" data-search-filters role="group" aria-label="按板块筛选">
-      <button type="button" data-collection="" class="chip is-on">全部</button>
+      <button type="button" data-collection="" class="chip is-on" aria-pressed="true">全部</button>
       {
         collections.map(([key, { label }]) => (
-          <button type="button" data-collection={key} class="chip">
+          <button type="button" data-collection={key} class="chip" aria-pressed="false">
             {label}
           </button>
         ))

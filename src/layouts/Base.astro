@@ -61,6 +61,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     <meta name="theme-color" content="#f5f6f7" />
   </head>
   <body>
+    <a class="skip-link" href="#main">跳到正文</a>
     <div class="desk">
       <div class="shell">
         <div class="screen">
@@ -87,7 +88,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
                 <nav class="site-nav" aria-label="板块">
                   {
                     nav.map(([slug, label]) => (
-                      <a href={`${base}${slug}/`} class:list={[here === slug && 'is-active']}>
+                      <a href={`${base}${slug}/`} class:list={[here === slug && 'is-active']} aria-current={here === slug ? 'page' : undefined}>
                         {label}
                       </a>
                     ))
@@ -97,7 +98,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
                 <nav class="site-tools" aria-label="索引">
                   {
                     tools.map(([slug, label]) => (
-                      <a href={`${base}${slug}/`} class:list={[here === slug && 'is-active']}>
+                      <a href={`${base}${slug}/`} class:list={[here === slug && 'is-active']} aria-current={here === slug ? 'page' : undefined}>
                         {label}
                       </a>
                     ))
@@ -112,14 +113,15 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
                   写点东西
                 </a>
 
+                <a class="mobile-search" href={`${base}search/`}>搜索</a>
                 <details class="menu">
                   <summary aria-label="目录">
                     <span class="bars" aria-hidden="true" />
                   </summary>
                   <nav class="menu-panel" aria-label="板块">
-                    {nav.map(([slug, label]) => <a href={`${base}${slug}/`}>{label}</a>)}
+                    {nav.map(([slug, label]) => <a href={`${base}${slug}/`} aria-current={here === slug ? 'page' : undefined}>{label}</a>)}
                     <div class="menu-group">
-                      {tools.map(([slug, label]) => <a href={`${base}${slug}/`}>{label}</a>)}
+                      {tools.map(([slug, label]) => <a href={`${base}${slug}/`} aria-current={here === slug ? 'page' : undefined}>{label}</a>)}
                     </div>
                     <a class="menu-write" href={`${base}write/`}>写点东西</a>
                     <a class="menu-sub" href={`${base}rss.xml`}>RSS 订阅</a>
@@ -128,7 +130,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
               </div>
             </header>
 
-            <main class="site-main">
+            <main id="main" class="site-main" tabindex="-1">
               <slot />
             </main>
 
@@ -154,6 +156,11 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     </div>
   </body>
 </html>
+<script>
+ const menu=document.querySelector<HTMLDetailsElement>('.menu');
+ document.addEventListener('click',e=>{if(menu?.open&&!menu.contains(e.target as Node))menu.open=false;});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menu?.open){menu.open=false;menu.querySelector('summary')?.focus();}});
+</script>
 
 <style is:global>
   :root {
@@ -838,4 +845,16 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
       font-size: 11px;
     }
   }
+
+  /* Keep the vintage frame; improve targets and the reading hierarchy. */
+  :root{--ink-faint:#727b83}
+  a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+  .skip-link{position:fixed;top:8px;left:16px;z-index:100;background:var(--paper);padding:8px 14px;transform:translateY(-200%)}
+  .skip-link:focus{transform:none}.mobile-search{display:none}
+  .site-nav a,.site-tools a{padding:7px 0}.menu summary{width:40px;height:36px}
+  .menu-panel a{padding:10px 12px}.menu-panel a[aria-current="page"]{background:var(--shell);color:var(--ink)}
+  .prose{line-height:1.9}.prose h2{font-size:20px;font-weight:600;line-height:1.5;margin-top:38px;scroll-margin-top:24px}.prose h3{font-size:17px;font-weight:600;scroll-margin-top:24px}
+  .prose a{text-decoration:underline;text-underline-offset:3px}
+  body:has(dialog[open]){overflow:hidden}
+  @media(max-width:640px){.mobile-search{display:block;font-size:12px;padding:8px 0}.head-right{gap:9px}.shell{padding:9px 9px 0}.screen-body{padding:20px 13px 24px}.site-main{padding-top:24px}.prose{font-size:16px}.section{margin-bottom:32px}}
 </style>

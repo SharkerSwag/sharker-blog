@@ -21,8 +21,8 @@ export async function getStaticPaths() {
         props: {
           collection,
           entry,
-          newer: chronological[i + 1] ?? null,
-          older: chronological[i - 1] ?? null,
+          newer: chronological[i - 1] ?? null,
+          older: chronological[i + 1] ?? null,
         },
       });
     });
@@ -31,7 +31,7 @@ export async function getStaticPaths() {
   return paths;
 }
 
-const { collection, entry, newer, older } = Astro.props;
+const { collection, entry } = Astro.props;
 const data = entry.data as any;
 const { Content, headings } = await render(entry);
 const label = COLLECTION_LABELS[collection] ?? '记录';
@@ -46,6 +46,8 @@ const neighbour = (item: any) =>
         title: item.data.title ?? `（${fmtDate(item.data.pubDate)} 的便签）`,
       }
     : null;
+const newer = neighbour(Astro.props.newer);
+const older = neighbour(Astro.props.older);
 ---
 
 <Base
@@ -68,8 +70,7 @@ const neighbour = (item: any) =>
   {data.venue || data.year ? (
     <p class="venue">
       {data.venue}
-      {data.venue && data.year ? ' · ' : ''}
-      {data.year}
+      {data.year && !String(data.venue ?? '').includes(String(data.year)) ? `${data.venue ? ' · ' : ''}${data.year}` : ''}
     </p>
   ) : null}
 
@@ -80,7 +81,7 @@ const neighbour = (item: any) =>
   ) : null}
 
   {data.tags?.length ? (
-    <p class="tags">{data.tags.map((tag: string) => <span class="tag">{tag}</span>)}</p>
+    <p class="tags">{data.tags.map((tag: string) => <a class="tag" href={`${base}tags/${tagSlug(tag)}/`}>{tag}</a>)}</p>
   ) : null}
 
   {

@@ -66,10 +66,10 @@ const notes = await Promise.all(
 
 {
   notes.map((note) => (
-    <dialog class="note-dialog" id={note.key}>
+    <dialog class="note-dialog" id={note.key} aria-labelledby={`${note.key}-title`}>
       <div class="dialog-bar">
         <button type="button" class="dialog-close" data-close aria-label="关闭" />
-        <span class="dialog-title">{fmtDate(note.date)}</span>
+        <span class="dialog-title" id={`${note.key}-title`}>{fmtDate(note.date)} 的便签</span>
       </div>
       <div class="dialog-body prose">
         <note.Content />
