@@ -105,14 +105,6 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
                   }
                 </nav>
 
-                <a
-                  class="write-link"
-                  href={`${base}write/`}
-                  class:list={[here === 'write' && 'is-active']}
-                >
-                  写点东西
-                </a>
-
                 <a class="mobile-search" href={`${base}search/`}>搜索</a>
                 <details class="menu">
                   <summary aria-label="目录">
@@ -123,7 +115,6 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
                     <div class="menu-group">
                       {tools.map(([slug, label]) => <a href={`${base}${slug}/`} aria-current={here === slug ? 'page' : undefined}>{label}</a>)}
                     </div>
-                    <a class="menu-write" href={`${base}write/`}>写点东西</a>
                     <a class="menu-sub" href={`${base}rss.xml`}>RSS 订阅</a>
                   </nav>
                 </details>
@@ -135,7 +126,10 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
             </main>
 
             <footer class="site-foot">
-              <p class="creed">Clio —— 名字取自希腊神话中掌管历史与记录的缪斯。</p>
+              <p class="creed">
+                Clio —— 名字取自希腊神话中掌管历史与记录的缪斯。<br />
+                <a class="personal-link" href="https://sharkerswag.github.io/">Shaoyu Tang · 个人主页 ↗</a>
+              </p>
               <p class="foot-rss">
                 <a href={`${base}rss.xml`}>RSS 订阅 ↗</a>
               </p>
@@ -418,30 +412,6 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     font-weight: 600;
   }
 
-  /* 头部唯一一个"动作"入口，做成按钮的样子。
-     它和旁边那些链接性质不同：那些是去哪儿看，这个是去写。 */
-  .write-link {
-    padding: 4px 11px;
-    border: 1px solid #c9c5b6;
-    background: #fbfaf5;
-    color: var(--ink-soft);
-    font-family: var(--mono);
-    font-size: 11.5px;
-    white-space: nowrap;
-  }
-
-  .write-link:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    text-decoration: none;
-  }
-
-  .write-link.is-active {
-    border-color: #b9b4a3;
-    background: var(--shell);
-    color: var(--ink);
-  }
-
   /* ---------- 窄屏目录（三条杠） ---------- */
 
   .menu {
@@ -525,12 +495,6 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
     text-decoration: none;
   }
 
-  .menu-panel .menu-write {
-    margin-top: 4px;
-    border-top: 1px solid var(--rule);
-    color: var(--accent);
-  }
-
   .menu-panel .menu-sub {
     margin-top: 4px;
     border-top: 1px solid var(--rule);
@@ -578,6 +542,12 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
   }
 
   .foot-rss a {
+    color: var(--ink-faint);
+  }
+
+  .personal-link {
+    display: inline-block;
+    margin-top: 5px;
     color: var(--ink-faint);
   }
 
@@ -814,7 +784,7 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
       font-size: 20px;
     }
 
-    /* 板块和索引入口都收进三条杠；「写点东西」是动作而不是导航，留在外面。 */
+    /* 板块和索引入口收进三条杠，搜索保留为直接入口。 */
     .site-nav,
     .site-tools {
       display: none;
@@ -840,10 +810,6 @@ const here = Astro.url.pathname.replace(base, '/').split('/').filter(Boolean)[0]
       display: none;
     }
 
-    .write-link {
-      padding: 4px 8px;
-      font-size: 11px;
-    }
   }
 
   /* Keep the vintage frame; improve targets and the reading hierarchy. */

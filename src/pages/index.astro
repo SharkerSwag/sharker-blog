@@ -44,7 +44,7 @@ const sections = await Promise.all(
       <h2>布告牌</h2>
       <a href={`${base}bulletin/`}>全部 {wall.length > SITE.wallLimit ? `(${wall.length}) ` : ''}→</a>
     </div>
-    <BulletinWall entries={wall} limit={SITE.wallLimit} addHref={`${base}write/?board=bulletin`} />
+    <BulletinWall entries={wall} limit={SITE.wallLimit} />
   </section>
 
   {

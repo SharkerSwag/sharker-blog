@@ -58,9 +58,6 @@ const basePath = `${base}${collection}/`;
     <span class="count">
       {total} 条{paged.total > 1 ? ` · ${paged.current}/${paged.total} 页` : ''}
     </span>
-    <a class="head-write" href={`${base}write/?board=${collection}`}>
-      {collection === 'bulletin' ? '贴一张 →' : '写一篇 →'}
-    </a>
   </span>
 </div>
 
@@ -68,7 +65,7 @@ const basePath = `${base}${collection}/`;
 
 {
   collection === 'bulletin' ? (
-    <BulletinWall entries={paged.items} addHref={`${base}write/?board=bulletin`} />
+    <BulletinWall entries={paged.items} />
   ) : (
     <EntryList items={items} collection={collection} />
   )
@@ -89,11 +86,4 @@ const basePath = `${base}${collection}/`;
     gap: 12px;
   }
 
-  .head-write {
-    color: var(--ink-soft);
-  }
-
-  .head-write:hover {
-    color: var(--accent);
-  }
 </style>

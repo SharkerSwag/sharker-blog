@@ -8,11 +8,9 @@ interface Props {
   entries: any[];
   /** 最多贴几张，不传就全贴。 */
   limit?: number;
-  /** 给了就多贴一张空白便签，点了去这儿——写作页。 */
-  addHref?: string;
 }
 
-const { entries, limit, addHref } = Astro.props;
+const { entries, limit } = Astro.props;
 const list = limit ? entries.slice(0, limit) : entries;
 
 const notes = await Promise.all(
@@ -49,19 +47,9 @@ const notes = await Promise.all(
         </li>
       ))
     }
-    {
-      addHref && (
-        <li class="note note-new">
-          <a href={addHref} aria-label="贴一张新便签">
-            <span class="plus" aria-hidden="true">+</span>
-            <span class="note-new-text">贴一张</span>
-          </a>
-        </li>
-      )
-    }
   </ul>
 
-  {notes.length === 0 && !addHref && <p class="board-empty">板上暂时没有便签。</p>}
+  {notes.length === 0 && <p class="board-empty">板上暂时没有便签。</p>}
 </div>
 
 {
@@ -235,46 +223,6 @@ const notes = await Promise.all(
     color: #4a4432;
   }
 
-  /* ---------- 空贴纸位 ---------- */
-  /* 和普通贴纸同一格大小，但虚线、无影子、不倾斜。
-     它得一眼看着"这不是内容，是可以点的空位"，而不是一张写过的便签。
-     放在最后，于是 nth-child 那几条换色和旋转规则被后面的声明覆盖掉。 */
-
-  .note.note-new {
-    background: none;
-    box-shadow: none;
-    transform: none;
-  }
-
-  .note.note-new a {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    height: 100%;
-    min-height: 100px;
-    border: 1px dashed #fdf7e9a6;
-    border-radius: 2px;
-    color: #5b422a;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    opacity: 0.62;
-  }
-
-  .note.note-new a:hover {
-    opacity: 1;
-    border-style: solid;
-    background: #fdf7e93d;
-    text-decoration: none;
-  }
-
-  .plus {
-    font-size: 17px;
-    line-height: 1;
-  }
-
   /* ---------- 弹出窗口 ---------- */
 
   .note-dialog {
@@ -412,14 +360,12 @@ const notes = await Promise.all(
     }
 
     /* 十八张贴纸在手机上要滚九屏，那就不是"一眼扫过"的墙了。
-       所以窄屏只摆满三行，其余留在列表页里——反正"全部 →"就在标题边上。
-       空贴纸位不参与这个裁剪，否则加便签的入口会被自己藏掉。 */
-    .wall > li:nth-child(n + 6):not(.note-new) {
+       所以窄屏只摆满三行，其余留在列表页里——反正"全部 →"就在标题边上。 */
+    .wall > li:nth-child(n + 6) {
       display: none;
     }
 
-    .note-open,
-    .note.note-new a {
+    .note-open {
       min-height: 94px;
       padding: 9px 9px 10px;
     }
